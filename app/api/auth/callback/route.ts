@@ -1,60 +1,52 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { handleGitHub } from '@/app/api/auth/services/github';
+import { handleDiscord } from '@/app/api/auth/services/discord';
 
 /**
- * GET /api/auth/callback
- * Exchanges GitHub OAuth `code` for an access token and stores it in an httpOnly cookie.
- * Requires `GITHUB_ID` and `GITHUB_SECRET` env variables.
+ * Universal OAuth Callback Handler
+ * GET /api/auth/callback?service=github&code=...&state=...
+ * GET /api/auth/callback?service=discord&code=...&state=...
+ *
+ * Supports: GitHub OAuth, Discord OAuth, CSRF protection via state
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const service = url.searchParams.get('service');
   const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
 
-  if (!code) {
-    return NextResponse.json({ error: 'Missing code parameter' }, { status: 400 });
+  if (!service || !code) {
+    return NextResponse.json(
+      { error: 'Missing service or code parameter' },
+      { status: 400 }
+    );
   }
 
-  const client_id = process.env.GITHUB_ID;
-  const client_secret = process.env.GITHUB_SECRET;
-
-  if (!client_id || !client_secret) {
-    return NextResponse.json({ error: 'OAuth client not configured on server' }, { status: 500 });
+  if (state) {
+    const cookieStore = await cookies();
+    const sessionState = cookieStore.get('oauth_state')?.value;
+    if (state !== sessionState) {
+      return NextResponse.json({ error: 'Invalid state - CSRF check failed' }, { status: 403 });
+    }
   }
 
   try {
-    const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ client_id, client_secret, code }),
-    });
-
-    const tokenJson = await tokenResp.json();
-
-    if (tokenJson.error) {
-      return NextResponse.json({ error: tokenJson.error_description || tokenJson.error }, { status: 400 });
+    let response;
+    switch (service) {
+      case 'github':
+        response = await handleGitHub(code, request);
+        break;
+      case 'discord':
+        response = await handleDiscord(code, request);
+        break;
+      default:
+        return NextResponse.json({ error: `Unknown service: ${service}` }, { status: 400 });
     }
-
-    const accessToken = tokenJson.access_token;
-    if (!accessToken) {
-      return NextResponse.json({ error: 'No access_token returned from GitHub' }, { status: 500 });
-    }
-
-    const redirectUrl = new URL('/', request.url);
-    const res = NextResponse.redirect(redirectUrl);
-
-    // Set httpOnly cookie with the token (server-side usage). Adjust maxAge as needed.
-    res.cookies.set('github_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    });
-
-    return res;
+    response.cookies.delete('oauth_state');
+    return response;
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
+    console.error(`[OAuth Error] Service: ${service}`, err);
+    return NextResponse.json({ error: err?.message ?? 'Auth failed' }, { status: 500 });
   }
 }
