@@ -16,6 +16,9 @@
 **1. Create OAuth App:**
 - Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App
 - Fill in:
+  - **Description:** Briefly describe your app’s purpose (e.g., “DevHub integrates GitHub and Discord for developer collaboration.”)
+  - **Homepage URL:** Use your deployed domain or `http://localhost:3000` for local development
+  - **Authorization callback URL:** Must match your backend route, e.g., `http://localhost:3000/api/auth/callback?service=github` (adjust for production)
   - **Application name:** DeltCrosX DevHub (or your app name)
   - **Homepage URL:** `https://yourdomain.com` (localhost for dev)
   - **Authorization callback URL:** `https://yourdomain.com/api/auth/callback?service=github`
