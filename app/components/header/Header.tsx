@@ -25,9 +25,11 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* ===== LOGO SECTION ===== */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg" style={{ fontFamily: 'var(--font-aldrich)' }}>M </span>
-            </div>
+            <img 
+              src="/favicon.svg" 
+              alt="Meridus Logo"
+              className="w-8 h-8"
+            />
             <span className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-aldrich)' }}>MERIDUS</span>
           </div>
 
@@ -55,8 +57,8 @@ export default function Header() {
                     className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
                   >
                     <img 
-                      src={githubUser.avatar_url} 
-                      alt={githubUser.login}
+                      src={githubUser.avatar_url}
+                      alt={githubUser.id.toString()}
                       className="w-5 h-5 rounded-full"
                     />
                     <span className="text-sm">{githubUser.login}</span>
