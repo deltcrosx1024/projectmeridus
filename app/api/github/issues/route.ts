@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { Octokit } from 'octokit';
 
 /**
@@ -9,8 +10,11 @@ import { Octokit } from 'octokit';
  * - type=pull - returns pull requests instead of issues
  */
 export async function GET(request: Request) {
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get('github_token')?.value;
   const authHeader = request.headers.get('authorization');
-  const token = authHeader?.split(' ')[1] ?? process.env.GITHUB_TOKEN;
+  const headerToken = authHeader?.split(' ')[1];
+  const token = cookieToken ?? headerToken ?? process.env.GITHUB_TOKEN;
   const url = new URL(request.url);
   const type = url.searchParams.get('type');
 

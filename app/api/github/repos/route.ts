@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { Octokit } from 'octokit';
 
 /**
@@ -7,8 +8,11 @@ import { Octokit } from 'octokit';
  * Accepts Authorization: Bearer <token> header or falls back to process.env.GITHUB_TOKEN
  */
 export async function GET(request: Request) {
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get('github_token')?.value;
   const authHeader = request.headers.get('authorization');
-  const token = authHeader?.split(' ')[1] ?? process.env.GITHUB_TOKEN;
+  const headerToken = authHeader?.split(' ')[1];
+  const token = cookieToken ?? headerToken ?? process.env.GITHUB_TOKEN;
 
   if (!token) {
     return NextResponse.json({ error: 'No GitHub token provided' }, { status: 401 });
