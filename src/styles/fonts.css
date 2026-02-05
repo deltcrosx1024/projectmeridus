@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'Nord';
+  src: url('/fonts/nord-regular.woff2') format('woff2'),
+       url('/fonts/nord-regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+
+body[data-language='en'] {
+  font-family: 'Nord', sans-serif;
+}
+
+body[data-language='ja'] {
+  font-family: 'IBM Plex Sans JP', sans-serif;
+}
