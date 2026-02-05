@@ -7,6 +7,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Aldrich, Archivo } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "./contexts/AuthContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 const aldrich = Aldrich({
   weight: "400",
@@ -53,7 +55,11 @@ export default function RootLayout({
       <body
         className={`${aldrich.variable} ${archivo.variable} ${geistMono.variable}  antialiased`}
       >
-        {children}
+        <AuthProvider>
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );
