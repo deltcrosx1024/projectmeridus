@@ -41,7 +41,7 @@ export default function IssuesSection() {
           {issues.map((issue) => (
             <a
               key={issue.id}
-              href={issue.url}
+              href={issue.url}  
               target="_blank"
               rel="noopener noreferrer"
               className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-700/50 transition-all group"

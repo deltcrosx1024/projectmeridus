@@ -13,6 +13,7 @@ import { NAV_ITEMS } from '@/app/constants/data';
 import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function Header() {
   const { githubUser, discordUser, logout, isLoading } = useAuth();
@@ -35,15 +36,18 @@ export default function Header() {
 
           {/* ===== NAVIGATION SECTION ===== */}
           <nav className="flex items-center gap-6">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.label}
-                className="text-slate-300 hover:text-white font-aldrich transition-colors"
-              >
-
-                {item.label}
-              </button>
-            ))}
+            {NAV_ITEMS.map((item) => {
+              const href = `/${item.label.toLowerCase()}`;
+              return (
+                <Link
+                  key={item.label}
+                  href={href}
+                  className="text-slate-300 hover:text-white font-aldrich transition-colors"
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* ===== AUTH BUTTONS SECTION ===== */}
