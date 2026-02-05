@@ -5,6 +5,8 @@
  * - Hero section with call-to-action
  * - Statistics grid
  * - Features showcase
+ * - GitHub Repos (if authenticated)
+ * - Recent Issues (if authenticated)
  * - CTA section
  * - Footer
  */
@@ -16,6 +18,8 @@ import StatsGrid from '@/app/components/stats/StatsGrid';
 import FeaturesSection from '@/app/components/features/FeaturesSection';
 import CTASection from '@/app/components/cta/CTASection';
 import Footer from '@/app/components/footer/Footer';
+import ReposSection from '@/app/components/repos/ReposSection';
+import IssuesSection from '@/app/components/issues/IssuesSection';
 
 export default function Home() {
   return (
@@ -33,6 +37,12 @@ export default function Home() {
 
         {/* ===== FEATURES SECTION COMPONENT ===== */}
         <FeaturesSection />
+
+        {/* ===== GITHUB REPOS SECTION ===== */}
+        <ReposSection />
+
+        {/* ===== RECENT ISSUES SECTION ===== */}
+        <IssuesSection />
 
         {/* ===== CTA SECTION COMPONENT ===== */}
         <CTASection />

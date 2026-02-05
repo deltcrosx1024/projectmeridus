@@ -45,8 +45,18 @@ export async function handleGitHub(code: string, request: Request) {
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 
-  // Optional: store user info
-  res.cookies.set('github_user', JSON.stringify({ id: user.data.id, login: user.data.login }), {
+  // Store full user info (non-httpOnly so client can read it)
+  const userData = {
+    id: user.data.id,
+    login: user.data.login,
+    avatar_url: user.data.avatar_url,
+    name: user.data.name,
+    bio: user.data.bio,
+    public_repos: user.data.public_repos,
+    followers: user.data.followers,
+  };
+  
+  res.cookies.set('github_user', JSON.stringify(userData), {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
