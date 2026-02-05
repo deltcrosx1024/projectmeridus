@@ -8,9 +8,9 @@ import { Octokit } from 'octokit';
  */
 export async function GET(
   request: Request,
-  { params }: { params: { owner: string; repo: string } }
+  { params }: { params: Promise<{ owner: string; repo: string }> }
 ) {
-  const { owner, repo } = params;
+  const { owner, repo } = await params;
   const authHeader = request.headers.get('authorization');
   const token = authHeader?.split(' ')[1] ?? process.env.GITHUB_TOKEN;
 
