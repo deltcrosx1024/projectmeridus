@@ -39,8 +39,11 @@ export function useGitHubRepos() {
     const fetchRepos = async () => {
       try {
         const response = await fetch('/api/github/repos');
-        if (!response.ok) throw new Error('Failed to fetch repos');
         const data = await response.json();
+        if (!response.ok) {
+          const errMsg = data?.error || data?.message || 'Failed to fetch repos';
+          throw new Error(errMsg);
+        }
         
         const formatted = data.map((repo: any) => ({
           id: repo.id,
@@ -54,7 +57,8 @@ export function useGitHubRepos() {
         
         setRepos(formatted.slice(0, 6)); // Limit to 6 repos
       } catch (err: any) {
-        setError(err.message);
+        console.error('useGitHubRepos error', err);
+        setError(err.message || String(err));
       } finally {
         setIsLoading(false);
       }
@@ -75,8 +79,11 @@ export function useGitHubIssues() {
     const fetchIssues = async () => {
       try {
         const response = await fetch('/api/github/issues');
-        if (!response.ok) throw new Error('Failed to fetch issues');
         const data = await response.json();
+        if (!response.ok) {
+          const errMsg = data?.error || data?.message || 'Failed to fetch issues';
+          throw new Error(errMsg);
+        }
         
         const formatted = data.map((issue: any) => ({
           id: issue.id,
@@ -89,7 +96,8 @@ export function useGitHubIssues() {
         
         setIssues(formatted.slice(0, 6)); // Limit to 6 issues
       } catch (err: any) {
-        setError(err.message);
+        console.error('useGitHubIssues error', err);
+        setError(err.message || String(err));
       } finally {
         setIsLoading(false);
       }
@@ -110,8 +118,11 @@ export function useGitHubPullRequests() {
     const fetchPullRequests = async () => {
       try {
         const response = await fetch('/api/github/issues?type=pull');
-        if (!response.ok) throw new Error('Failed to fetch pull requests');
         const data = await response.json();
+        if (!response.ok) {
+          const errMsg = data?.error || data?.message || 'Failed to fetch pull requests';
+          throw new Error(errMsg);
+        }
         
         const formatted = data.map((pr: any) => ({
           id: pr.id,
