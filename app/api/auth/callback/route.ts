@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   
   const cookieStore = await cookies();
   // Try to get service from cookie first, then fall back to URL parameter
-  let service = cookieStore.get('oauth_service')?.value;
+  let service: string | null = cookieStore.get('oauth_service')?.value || null;
   if (!service) {
     service = url.searchParams.get('service');
   }
