@@ -25,20 +25,25 @@ export async function GET(request: Request) {
   try {
     const octokit = new Octokit({ auth: token });
     
+    // Use the Search API across the user's repositories so we count issues/PRs
+    // that exist in the repos the user owns or has access to. This returns
+    // consistent counts even if the user didn't "create" the issue/PR.
+    const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 100 });
+    const repoQualifiers = (reposRes.data || []).map((r: any) => `repo:${r.owner.login}/${r.name}`);
+
+    if (repoQualifiers.length === 0) return NextResponse.json([]);
+
+    const repoQuery = repoQualifiers.join(' ');
+
     if (type === 'pull') {
-      // Fetch all issues and pull requests, then filter for PRs
-      const res = await octokit.rest.issues.listForAuthenticatedUser({ 
-        filter: 'created',
-        per_page: 100 
-      });
-      // Filter to only include pull requests
-      const prs = (res.data || []).filter((item: any) => item.pull_request);
-      return NextResponse.json(prs);
+      const q = `${repoQuery} is:pr`;
+      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 100 });
+      return NextResponse.json(searchRes.data.items || []);
     } else {
-      // Fetch issues (excluding pull requests)
-      const res = await octokit.rest.issues.listForAuthenticatedUser({ per_page: 100 });
-      // Filter out pull requests
-      const issues = (res.data || []).filter((item: any) => !item.pull_request);
+      const q = `${repoQuery} is:issue`;
+      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 100 });
+      // Filter out any PRs just in case
+      const issues = (searchRes.data.items || []).filter((it: any) => !it.pull_request);
       return NextResponse.json(issues);
     }
   } catch (err: any) {
