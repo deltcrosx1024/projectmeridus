@@ -12,9 +12,11 @@ import { handleDiscord } from '@/app/api/auth/services/discord';
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const service = url.searchParams.get('service');
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
+  
+  const cookieStore = await cookies();
+  const service = cookieStore.get('oauth_service')?.value;
 
   if (!service || !code) {
     return NextResponse.json(
@@ -24,7 +26,6 @@ export async function GET(request: Request) {
   }
 
   if (state) {
-    const cookieStore = await cookies();
     const sessionState = cookieStore.get('oauth_state')?.value;
     if (state !== sessionState) {
       return NextResponse.json({ error: 'Invalid state - CSRF check failed' }, { status: 403 });
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: `Unknown service: ${service}` }, { status: 400 });
     }
     response.cookies.delete('oauth_state');
+    response.cookies.delete('oauth_service');
     return response;
   } catch (err: any) {
     console.error(`[OAuth Error] Service: ${service}`, err);

@@ -16,7 +16,7 @@ export function generateState(): string {
 export function getGitHubAuthUrl(clientId: string, redirectUri: string, state?: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: `${redirectUri}?service=github`,
+    redirect_uri: redirectUri,
     scope: 'repo user read:user',
     ...(state && { state }),
   });
@@ -29,7 +29,7 @@ export function getGitHubAuthUrl(clientId: string, redirectUri: string, state?: 
 export function getDiscordAuthUrl(clientId: string, redirectUri: string, state?: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: `${redirectUri}?service=discord`,
+    redirect_uri: redirectUri,
     scope: 'identify email guilds',
     response_type: 'code',
     ...(state && { state }),
@@ -45,8 +45,9 @@ export function handleGitHubLogin(clientId: string): void {
   const redirectUri = window.location.origin + '/api/auth/callback';
   const state = generateState();
   
-  // Store state in cookie for CSRF validation
+  // Store state and service type in cookies for CSRF validation
   document.cookie = `oauth_state=${state}; path=/; max-age=600`; // 10 minutes
+  document.cookie = `oauth_service=github; path=/; max-age=600`;
   
   window.location.href = getGitHubAuthUrl(clientId, redirectUri, state);
 }
@@ -59,8 +60,9 @@ export function handleDiscordLogin(clientId: string): void {
   const redirectUri = window.location.origin + '/api/auth/callback';
   const state = generateState();
   
-  // Store state in cookie for CSRF validation
+  // Store state and service type in cookies for CSRF validation
   document.cookie = `oauth_state=${state}; path=/; max-age=600`; // 10 minutes
+  document.cookie = `oauth_service=discord; path=/; max-age=600`;
   
   window.location.href = getDiscordAuthUrl(clientId, redirectUri, state);
 }
