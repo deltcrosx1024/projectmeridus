@@ -21,6 +21,15 @@ interface GitHubIssue {
   created_at: string;
 }
 
+interface GitHubPullRequest {
+  id: number;
+  title: string;
+  number: number;
+  state: string;
+  url: string;
+  created_at: string;
+}
+
 export function useGitHubRepos() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,4 +99,39 @@ export function useGitHubIssues() {
   }, []);
 
   return { issues, isLoading, error };
+}
+
+export function useGitHubPullRequests() {
+  const [prs, setPrs] = useState<GitHubPullRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPullRequests = async () => {
+      try {
+        const response = await fetch('/api/github/issues?type=pull');
+        if (!response.ok) throw new Error('Failed to fetch pull requests');
+        const data = await response.json();
+        
+        const formatted = data.map((pr: any) => ({
+          id: pr.id,
+          title: pr.title,
+          number: pr.number,
+          state: pr.state,
+          url: pr.html_url,
+          created_at: pr.created_at,
+        }));
+        
+        setPrs(formatted.slice(0, 6)); // Limit to 6 PRs
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPullRequests();
+  }, []);
+
+  return { prs, isLoading, error };
 }
