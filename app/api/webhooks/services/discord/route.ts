@@ -99,12 +99,17 @@ function verifyDiscordSignature(
   publicKey: string
 ): boolean {
   try {
-    const message = timestamp + body;
-    const isValid = crypto
-      .createVerify('Ed25519')
-      .update(message)
-      .verify(publicKey, Buffer.from(signature, 'hex'));
-
+    const message = Buffer.from(timestamp + body);
+    const sigBytes = Buffer.from(signature, 'hex');
+    const keyBytes = Buffer.from(publicKey, 'hex');
+    
+    // Use Node.js crypto.verify with raw Ed25519 key
+    const isValid = crypto.verify(
+      'ed25519',
+      message,
+      keyBytes,
+      sigBytes
+    );
     return isValid;
   } catch (err) {
     console.error('[Discord Signature Verification Error]', err);
