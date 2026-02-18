@@ -228,12 +228,23 @@ const issues = await fetchRepoIssues('facebook', 'react');
 
 ## Discord Integration
 
-### Discord Webhook Validation
+### Discord Bot Interaction Endpoint
 
-**Endpoint:** (Future implementation)
+**Endpoint:**
 ```
-POST /api/webhook/discord
+POST /api/webhooks/services/discord
 ```
+
+**Required Environment Variables:**
+```env
+DISCORD_PUBLIC_KEY=your_discord_public_key
+```
+
+**Discord Developer Portal Setup:**
+1. Go to Discord Developer Portal → Applications → Your App
+2. Navigate to **Interactions Endpoint URL**
+3. Set URL to: `https://yourdomain.com/api/webhooks/services/discord`
+4. Copy your Public Key and set as `DISCORD_PUBLIC_KEY`
 
 **Expected Payload:**
 ```json
@@ -245,11 +256,60 @@ POST /api/webhook/discord
 }
 ```
 
-**Implementation Steps:**
-1. Set `DISCORD_PUBLIC_KEY` in env
-2. Verify signature using `X-Signature-Ed25519` and `X-Signature-Timestamp` headers
-3. Respond with `type: 1` for PING events
-4. Process `type: 2` (APPLICATION_COMMAND) or `type: 3` (MESSAGE_COMPONENT) events
+**Response Types:**
+- `type: 1` → PING (respond with `{ type: 1 }`)
+- `type: 2` → APPLICATION_COMMAND (slash commands)
+- `type: 3` → MESSAGE_COMPONENT (buttons, select menus)
+
+**Supported Slash Commands:**
+- `/ping` → Responds with "🏓 Pong!"
+- `/repo [owner] [repo]` → Returns repository info
+
+---
+
+### GitHub → Discord Webhook Bridge
+
+**Endpoint:**
+```
+POST /api/webhooks/services/github
+```
+
+**Required Environment Variables:**
+```env
+GITHUB_WEBHOOK_SECRET=your_webhook_secret
+DISCORD_WEBHOOK_URL=your_discord_webhook_url
+```
+
+**GitHub Setup:**
+1. Go to Repository → Settings → Webhooks → Add webhook
+2. **Payload URL:** `https://yourdomain.com/api/webhooks/services/github`
+3. **Content type:** `application/json`
+4. **Secret:** Generate a secret and set as `GITHUB_WEBHOOK_SECRET`
+
+**Discord Setup:**
+1. Create a Discord webhook URL in your server channel
+2. Set as `DISCORD_WEBHOOK_URL`
+
+**Supported Events:**
+- `push` → Notifications for code pushes
+- `pull_request` → PR opened, closed, merged, etc.
+- `issues` → Issue opened, closed, reopened
+- `issue_comment` → Comments on issues/PRs
+- `release` → New releases published
+
+---
+
+### Verify Webhook Endpoints
+
+**GitHub Verification:**
+```
+GET /api/webhooks/services/github
+```
+Returns: `{ "status": "ok", "message": "GitHub webhook endpoint is active" }`
+
+**Discord Verification:**
+- Discord sends a PING (type: 1) on initial setup
+- Respond with `{ type: 1 }` to complete verification
 
 ---
 
@@ -467,14 +527,20 @@ app/
 │   │   └── services/
 │   │       ├── github.ts         ← GitHub OAuth handler
 │   │       └── discord.ts        ← Discord OAuth handler
-│   └── github/
-│       ├── repos/
-│       │   └── route.ts          ← List user's repos
-│       ├── issues/
-│       │   └── route.ts          ← List all issues
-│       └── repo/
-│           └── [owner]/[repo]/issues/
-│               └── route.ts      ← List repo issues
+│   ├── github/
+│   │   ├── repos/
+│   │   │   └── route.ts          ← List user's repos
+│   │   ├── issues/
+│   │   │   └── route.ts          ← List all issues
+│   │   └── repo/
+│   │       └── [owner]/[repo]/issues/
+│   │           └── route.ts      ← List repo issues
+│   └── webhooks/
+│       └── services/
+│           ├── discord/
+│           │   └── route.ts      ← Discord bot interactions
+│           └── github/
+│               └── route.ts      ← GitHub → Discord bridge
 ├── lib/
 │   └── oauth.ts                  ← Client-side OAuth helpers
 └── components/

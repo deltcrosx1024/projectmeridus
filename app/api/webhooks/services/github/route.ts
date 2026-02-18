@@ -4,6 +4,7 @@ import crypto from 'crypto';
 /**
  * GitHub Webhook Handler
  * POST /api/webhooks/services/github
+ * GET /api/webhooks/services/github (for webhook verification)
  *
  * Receives GitHub repository events and sends them to Discord
  * Configure in GitHub → Settings → Webhooks
@@ -11,22 +12,34 @@ import crypto from 'crypto';
  * - Content type: application/json
  * - Secret: Set GITHUB_WEBHOOK_SECRET env var
  */
+
+export async function GET() {
+  // GitHub sends a GET request to verify the webhook endpoint
+  return NextResponse.json({ status: 'ok', message: 'GitHub webhook endpoint is active' });
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get('x-hub-signature-256');
   const body = await request.text();
   const event = request.headers.get('x-github-event');
+  const deliveryId = request.headers.get('x-github-delivery');
 
-  // Verify GitHub signature
+  // Verify GitHub signature (required for security)
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn('[GitHub Webhook] GITHUB_WEBHOOK_SECRET not set - skipping verification');
-  } else if (signature) {
-    const hash = crypto.createHmac('sha256', secret).update(body).digest('hex');
-    const expected = `sha256=${hash}`;
+    console.error('[GitHub Webhook] GITHUB_WEBHOOK_SECRET not set');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
 
-    if (signature !== expected) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing signature header' }, { status: 401 });
+  }
+
+  const hash = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  const expected = `sha256=${hash}`;
+
+  if (signature !== expected) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   try {

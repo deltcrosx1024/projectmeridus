@@ -104,8 +104,9 @@ function verifyDiscordSignature(
     const keyBytes = Buffer.from(publicKey, 'hex');
     
     // Use Node.js crypto.verify with raw Ed25519 key
+    // Note: Node.js uses 'sha512' combined with ed25519 key for Ed25519 signatures
     const isValid = crypto.verify(
-      'ed25519',
+      undefined, // Let crypto deduce the algorithm from key type
       message,
       keyBytes,
       sigBytes
