@@ -13,7 +13,7 @@ export async function handleDiscord(code: string, request: Request) {
   }
 
   const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/callback?service=discord`;
+  const redirectUri = `${origin}/api/auth/callback?services=discord`;
 
   const tokenResp = await fetch("https://discord.com/api/oauth2/token", {
     method: "POST",
