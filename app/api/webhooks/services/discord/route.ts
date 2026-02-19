@@ -112,11 +112,21 @@ export async function POST(request: Request) {
   const timestamp = request.headers.get('x-signature-timestamp');
   const body = await request.text();
 
+  // Debug: log received body
+  console.log('[Discord] Received body:', body);
+
+  // Handle empty body
+  if (!body || body.trim() === '') {
+    console.log('[Discord] Empty body received');
+    return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+  }
+
   // Parse the body to check interaction type
   let interaction: any = {};
   try {
     interaction = JSON.parse(body);
   } catch (e) {
+    console.log('[Discord] JSON parse error:', e);
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
