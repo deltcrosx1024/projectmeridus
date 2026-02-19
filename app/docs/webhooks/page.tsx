@@ -103,9 +103,18 @@ export default function WebhooksDocsPage() {
               <li>Go to <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Discord Developer Portal</a></li>
               <li>Create a new application and add a bot</li>
               <li>Copy the bot token and add to env: <code className="text-green-400">DISCORD_BOT_TOKEN</code></li>
+              <li>Add public key to env: <code className="text-green-400">DISCORD_PUBLIC_KEY</code></li>
               <li>Invite the bot to your server with appropriate permissions</li>
-              <li>The bot will auto-discover a channel to send notifications</li>
+              <li>Enable "Server Members Intent" in Discord Developer Portal</li>
             </ol>
+            <div className="mt-4 p-4 bg-blue-900/30 border border-blue-700 rounded-lg">
+              <h4 className="text-white font-semibold mb-2">⚠️ Important URL Configuration</h4>
+              <p className="text-slate-300 text-sm mb-2">In Discord Developer Portal → Your App → General Information:</p>
+              <ul className="list-disc list-inside text-slate-300 text-sm space-y-1">
+                <li><strong className="text-green-400">Interactions Endpoint URL:</strong> <code className="text-yellow-400">https://yourdomain.com/api/webhooks/services/discord</code></li>
+                <li><strong className="text-green-400">Linked Roles Verification URL:</strong> <code className="text-yellow-400">https://yourdomain.com/api/webhooks/services/discord?interaction_token=...</code></li>
+              </ul>
+            </div>
           </div>
 
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6 mb-6">
@@ -143,6 +152,11 @@ DISCORD_CHANNEL_OTHERUSER_OTHERPROJECT=555555555`}</pre>
                     <td className="py-2 px-3 font-mono text-green-400">DISCORD_BOT_TOKEN</td>
                     <td className="py-2 px-3">Yes</td>
                     <td className="py-2 px-3">Your Discord bot token</td>
+                  </tr>
+                  <tr className="border-b border-slate-700/50">
+                    <td className="py-2 px-3 font-mono text-green-400">DISCORD_PUBLIC_KEY</td>
+                    <td className="py-2 px-3">Yes</td>
+                    <td className="py-2 px-3">Your Discord app's public key (from Developer Portal)</td>
                   </tr>
                   <tr className="border-b border-slate-700/50">
                     <td className="py-2 px-3 font-mono text-green-400">GITHUB_WEBHOOK_SECRET</td>
