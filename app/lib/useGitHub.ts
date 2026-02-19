@@ -30,6 +30,17 @@ interface GitHubPullRequest {
   created_at: string;
 }
 
+interface GitHubCommit {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+  url: string;
+  repo_name: string;
+  repo_owner: string;
+  avatar_url: string;
+}
+
 export function useGitHubRepos() {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,4 +156,34 @@ export function useGitHubPullRequests() {
   }, []);
 
   return { prs, isLoading, error };
+}
+
+export function useGitHubCommits(perRepo = 5, maxRepos = 10) {
+  const [commits, setCommits] = useState<GitHubCommit[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCommits = async () => {
+      try {
+        const response = await fetch(`/api/github/commits?per_repo=${perRepo}&max_repos=${maxRepos}`);
+        const data = await response.json();
+        if (!response.ok) {
+          const errMsg = data?.error || data?.message || 'Failed to fetch commits';
+          throw new Error(errMsg);
+        }
+        
+        setCommits(data);
+      } catch (err: any) {
+        console.error('useGitHubCommits error', err);
+        setError(err.message || String(err));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCommits();
+  }, [perRepo, maxRepos]);
+
+  return { commits, isLoading, error };
 }

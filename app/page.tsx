@@ -15,7 +15,7 @@
 import Header from '@/app/components/header/Header';
 import HeroSection from '@/app/components/hero/HeroSection';
 import StatsGrid from '@/app/components/stats/StatsGrid';
-import FeaturesSection from '@/app/components/features/FeaturesSection';
+import InsightsSection from '@/app/components/insights/InsightsSection';
 import CTASection from '@/app/components/cta/CTASection';
 import Footer from '@/app/components/footer/Footer';
 import ReposSection from '@/app/components/repos/ReposSection';
@@ -35,8 +35,8 @@ export default function Home() {
         {/* ===== STATS GRID COMPONENT ===== */}
         <StatsGrid />
 
-        {/* ===== FEATURES SECTION COMPONENT ===== */}
-        <FeaturesSection />
+        {/* ===== INSIGHTS SECTION (Activity Frequency & Latest Commits) ===== */}
+        <InsightsSection />
 
         {/* ===== GITHUB REPOS SECTION ===== */}
         <ReposSection />
