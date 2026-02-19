@@ -1,15 +1,112 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { cookies } from 'next/headers';
+import { Octokit } from 'octokit';
 
 /**
- * Discord Bot Interaction Handler
- * POST /api/webhooks/services/discord
+ * Discord Bot Interaction & Linked Roles Handler
+ * POST /api/webhooks/services/discord - Interactions (slash commands, buttons)
+ * GET  /api/webhooks/services/discord - URL verification & Linked Roles
  *
- * Handles Discord bot interactions (slash commands, buttons, etc.)
+ * Handles Discord bot interactions and Linked Roles verification
  * Configure in Discord Developer Portal → Applications → Interactions Endpoint URL
  * URL: https://yourdomain.com/api/webhooks/services/discord
  * Public Key: Set DISCORD_PUBLIC_KEY in env
  */
+
+// Handle GET requests (URL verification and Linked Roles)
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const interactionToken = url.searchParams.get('interaction_token');
+  
+  // This is a Linked Roles verification request
+  if (interactionToken) {
+    return handleLinkedRolesVerification(request);
+  }
+  
+  // Default GET - URL verification from Discord
+  return NextResponse.json({ 
+    status: 'ok', 
+    message: 'Discord bot endpoint is active. Add to Interaction Endpoint URL in Discord Developer Portal.'
+  });
+}
+
+// Handle Linked Roles verification
+async function handleLinkedRolesVerification(request: Request) {
+  const url = new URL(request.url);
+  const interactionToken = url.searchParams.get('interaction_token');
+  const userId = url.searchParams.get('user_id');
+  
+  if (!interactionToken || !userId) {
+    return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+  }
+  
+  console.log(`[Linked Roles] Verification for user: ${userId}`);
+  
+  // Get the user's GitHub data from cookies
+  const cookieStore = await cookies();
+  const githubUserCookie = cookieStore.get('github_user')?.value;
+  
+  if (!githubUserCookie) {
+    // User not linked - return empty metadata
+    return NextResponse.json({
+      metadata: {}
+    });
+  }
+  
+  try {
+    const githubUser = JSON.parse(decodeURIComponent(githubUserCookie));
+    
+    // Get additional GitHub stats
+    const cookieToken = cookieStore.get('github_token')?.value;
+    let additionalData: any = {};
+    
+    if (cookieToken) {
+      try {
+        const octokit = new Octokit({ auth: cookieToken });
+        const { data: user } = await octokit.rest.users.getAuthenticated();
+        
+        additionalData = {
+          github_id: user.id,
+          login: user.login,
+          name: user.name,
+          public_repos: user.public_repos,
+          followers: user.followers,
+          following: user.following,
+          created_at: user.created_at,
+        };
+      } catch (err) {
+        console.error('[Linked Roles] Failed to fetch additional GitHub data:', err);
+      }
+    }
+    
+    // Return metadata that will be shown in Discord Linked Roles
+    return NextResponse.json({
+      metadata: {
+        // These keys must match what you configure in Discord Developer Portal
+        github_username: githubUser.login || additionalData.login || '',
+        github_id: String(additionalData.github_id || ''),
+        public_repos: String(additionalData.public_repos || '0'),
+        followers: String(additionalData.followers || '0'),
+        account_age: calculateAccountAge(additionalData.created_at || githubUser.created_at),
+      }
+    });
+    
+  } catch (err) {
+    console.error('[Linked Roles] Error:', err);
+    return NextResponse.json({ metadata: {} });
+  }
+}
+
+// Calculate account age in days
+function calculateAccountAge(createdAt?: string): string {
+  if (!createdAt) return '0';
+  const created = new Date(createdAt);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - created.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return String(diffDays);
+}
 export async function POST(request: Request) {
   const signature = request.headers.get('x-signature-ed25519');
   const timestamp = request.headers.get('x-signature-timestamp');
