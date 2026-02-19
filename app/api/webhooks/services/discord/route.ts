@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 import { Octokit } from 'octokit';
 
