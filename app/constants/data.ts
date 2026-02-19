@@ -100,8 +100,8 @@ export const FOOTER_SECTIONS: FooterSection[] = [
   {
     title: 'Resources',
     links: [
-      { label: 'Documentation', href: '#' },
-      { label: 'API Reference', href: '#' },
+      { label: 'Documentation', href: '/docs/api' },
+      { label: 'API Reference', href: '/docs/webhooks' },
       { label: 'Blog', href: '#' },
     ],
   },

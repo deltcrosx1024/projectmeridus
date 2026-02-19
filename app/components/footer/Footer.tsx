@@ -17,7 +17,7 @@ export default function Footer() {
     <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ===== FOOTER SECTIONS GRID ===== */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
           {FOOTER_SECTIONS.map((section) => (
             <div key={section.title}>
               <h3 className="text-white font-semibold mb-4" style={{ fontFamily: 'var(--font-aldrich)' }}>{section.title}</h3>
@@ -37,11 +37,13 @@ export default function Footer() {
         {/* ===== FOOTER BOTTOM ===== */}
         <div className="border-t border-slate-700/50 pt-8">
           <p className="text-slate-400 text-sm text-center" style={{ fontFamily: 'var(--font-archivo)' }}>
-            © 2024 deltcrosx1024. All rights reserved. |{' '}
+            © 2024 deltcrosx1024. All rights reserved.{' '}
+            <span className="hidden sm:inline">|{' '}</span>
+            <br className="sm:hidden" />
             <a href="#" className="hover:text-white transition">
               Privacy
             </a>{' '}
-            |{' '}
+            <span className="mx-1">|</span>{' '}
             <a href="#" className="hover:text-white transition">
               Terms
             </a>

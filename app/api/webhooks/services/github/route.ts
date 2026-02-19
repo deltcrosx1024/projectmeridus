@@ -6,7 +6,7 @@ import crypto from 'crypto';
  * POST /api/webhooks/services/github
  * GET /api/webhooks/services/github (for webhook verification)
  *
- * Receives GitHub repository events and sends them to Discord
+ * Receives GitHub repository events and forwards them to the Discord bot endpoint
  * Configure in GitHub → Settings → Webhooks
  * - Payload URL: https://yourdomain.com/api/webhooks/services/github
  * - Content type: application/json
@@ -77,9 +77,26 @@ export async function POST(request: Request) {
     // Send to Discord if message was generated
     if (discordMessage) {
       try {
-        await sendDiscordNotification(discordMessage);
+        // Get the origin from the request to build the webhook URL
+        const origin = new URL(request.url).origin;
+        const webhookUrl = `${origin}/api/webhooks?service=discord`;
+        
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: discordMessage,
+            event: event,
+            repository: payload.repository,
+            pusher: payload.pusher,
+            commits: payload.commits,
+            pull_request: payload.pull_request,
+            issue: payload.issue,
+            ref: payload.ref,
+          }),
+        });
       } catch (err) {
-        console.error('[Discord Notification Error]', err);
+        console.error('[Webhook Forward Error]', err);
       }
     }
 
@@ -170,29 +187,4 @@ function formatReleaseEvent(payload: any): string {
     `${release.name || release.tag_name}\n` +
     `${release.html_url}`
   );
-}
-
-// Send notification to Discord webhook
-
-async function sendDiscordNotification(message: string) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-
-  if (!webhookUrl) {
-    console.warn('[Discord] DISCORD_WEBHOOK_URL not set - skipping notification');
-    return;
-  }
-
-  const response = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      content: message,
-      username: 'GitHub Bot',
-      avatar_url: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Discord webhook failed: ${response.statusText}`);
-  }
 }
