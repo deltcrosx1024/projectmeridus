@@ -57,8 +57,8 @@ export function handleGitHubLogin(clientId: string): void {
  * Usage: onClick={() => handleDiscordLogin()}
  */
 export function handleDiscordLogin(clientId: string): void {
-  // Use dynamic origin - will be extracted from request URL on callback
-  const redirectUri = window.location.origin + '/api/auth/callback';
+  // Use dynamic origin with service parameter - must match Discord Developer Portal redirect URI
+  const redirectUri = window.location.origin + '/api/auth/callback?service=discord';
   const state = generateState();
   
   // Store state and service type in cookies for CSRF validation

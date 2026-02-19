@@ -4,17 +4,17 @@ import { cookies } from 'next/headers';
 import { Octokit } from 'octokit';
 
 /**
- * Discord Bot Interaction & Linked Roles Handler
- * POST /api/webhooks/services/discord - Interactions (slash commands, buttons)
- * GET  /api/webhooks/services/discord - URL verification & Linked Roles
- *
+ * Discord Bot Interaction Handler
+ * POST /api/webhooks/services/discord_interactions - Interactions (slash commands, buttons)
+ * GET  /api/webhooks/services/discord_interactions - URL verification & Linked Roles
+ * 
  * Handles Discord bot interactions and Linked Roles verification
  * Configure in Discord Developer Portal → Applications → Interactions Endpoint URL
  * URL: https://yourdomain.com/api/webhooks/services/discord
  * Public Key: Set DISCORD_PUBLIC_KEY in env
  */
 
-// Handle GET requests (URL verification and Linked Roles)
+// Handle GET requests (Linked Roles verification)
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const interactionToken = url.searchParams.get('interaction_token');
@@ -59,7 +59,7 @@ async function handleLinkedRolesVerification(request: Request) {
     
     // Get additional GitHub stats
     const cookieToken = cookieStore.get('github_token')?.value;
-    let additionalData: any = {};
+    let additionalData: Record<string, unknown> = {};
     
     if (cookieToken) {
       try {
@@ -107,6 +107,8 @@ function calculateAccountAge(createdAt?: string): string {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return String(diffDays);
 }
+
+// Handle POST requests (Discord interactions)
 export async function POST(request: Request) {
   const signature = request.headers.get('x-signature-ed25519');
   const timestamp = request.headers.get('x-signature-timestamp');
@@ -114,121 +116,98 @@ export async function POST(request: Request) {
 
   // Debug: log received body
   console.log('[Discord] Received body:', body);
-
+  
   // Handle empty body
   if (!body || body.trim() === '') {
     console.log('[Discord] Empty body received');
     return NextResponse.json({ error: 'Empty body' }, { status: 400 });
   }
-
+  
   // Parse the body to check interaction type
-  let interaction: any = {};
+  let interaction: Record<string, unknown> = {};  
   try {
     interaction = JSON.parse(body);
   } catch (e) {
     console.log('[Discord] JSON parse error:', e);
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
-
+  
   // Handle PING (type: 1) - Discord sends this to verify the endpoint
   // For URL verification, Discord expects a PONG response
   if (interaction.type === 1) {
     console.log('[Discord] Received PING - responding with PONG');
-    
     // Verify signature even for PING to ensure endpoint is properly configured
     if (!signature || !timestamp) {
       console.log('[Discord] PING without signature - responding anyway for URL verification');
       return NextResponse.json({ type: 1 });
     }
-    
     const publicKey = process.env.DISCORD_PUBLIC_KEY;
     if (!publicKey) {
       console.error('[Discord] DISCORD_PUBLIC_KEY not set');
       return NextResponse.json({ type: 1 }); // Still respond for URL verification
     }
-    
     const isValid = verifyDiscordSignature(signature, timestamp, body, publicKey);
     if (!isValid) {
       console.log('[Discord] Invalid signature on PING - responding anyway for URL verification');
       return NextResponse.json({ type: 1 }); // Still respond for URL verification
     }
-    
     return NextResponse.json({ type: 1 });
   }
-
+  
   // For other interactions, verify the signature
   if (!signature || !timestamp) {
     return NextResponse.json({ error: 'Missing signature headers' }, { status: 400 });
   }
-
+  
   // Verify Discord signature
   const publicKey = process.env.DISCORD_PUBLIC_KEY;
   if (!publicKey) {
     console.error('[Discord] DISCORD_PUBLIC_KEY not set');
-    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
   }
-
+  
   const isValid = verifyDiscordSignature(signature, timestamp, body, publicKey);
   if (!isValid) {
+    console.log('[Discord] Invalid signature - rejecting request');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
-
+  
+  // Handle the interaction based on its type
   try {
     const interaction = JSON.parse(body);
-
+    
     // Handle APPLICATION_COMMAND (slash commands)
     if (interaction.type === 2) {
-      const commandName = interaction.data.name;
-      console.log(`[Discord] Slash command: ${commandName}`);
-
-      // Example: /ping command
-      if (commandName === 'ping') {
-        return respondToInteraction({
-          content: '🏓 Pong!',
-        });
-      }
-
-      // Example: /repo command with options
-      if (commandName === 'repo') {
-        const owner = interaction.data.options?.[0]?.value;
-        const repo = interaction.data.options?.[1]?.value;
-
-        if (!owner || !repo) {
-          return respondToInteraction({
-            content: '❌ Please provide owner and repo name',
-          });
-        }
-
-        return respondToInteraction({
-          content: `📦 Repository: **${owner}/${repo}**\nhttps://github.com/${owner}/${repo}`,
-        });
-      }
-
-      // Default response
-      return respondToInteraction({
-        content: `❌ Unknown command: ${commandName}`,
+      const commandName = interaction.data?.name;
+      console.log(`[Discord] Received command: ${commandName}`);
+      
+      // Example response to a slash command
+      return NextResponse.json({
+        type: 4, // Channel message with source
+        data: { content: `You invoked the command: ${commandName}` }
       });
     }
-
+    
     // Handle MESSAGE_COMPONENT (buttons, select menus)
     if (interaction.type === 3) {
-      const customId = interaction.data.custom_id;
+      const customId = interaction.data?.custom_id;
       console.log(`[Discord] Component interaction: ${customId}`);
-
-      return respondToInteraction({
-        content: `✅ You clicked: ${customId}`,
+      
+      return NextResponse.json({
+        type: 4,
+        data: { content: `You clicked: ${customId}` }
       });
     }
-
+    
     return NextResponse.json({ error: 'Unhandled interaction type' }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Discord Interaction Error]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
 // Verify Discord interaction signature
-
 function verifyDiscordSignature(
   signature: string,
   timestamp: string,
@@ -241,7 +220,6 @@ function verifyDiscordSignature(
     const keyBytes = Buffer.from(publicKey, 'hex');
     
     // Use Node.js crypto.verify with raw Ed25519 key
-    // Note: Node.js uses 'sha512' combined with ed25519 key for Ed25519 signatures
     const isValid = crypto.verify(
       undefined, // Let crypto deduce the algorithm from key type
       message,
@@ -253,21 +231,4 @@ function verifyDiscordSignature(
     console.error('[Discord Signature Verification Error]', err);
     return false;
   }
-}
-
-// Helper to respond to Discord interaction
-
-function respondToInteraction(data: {
-  content?: string;
-  embeds?: any[];
-  ephemeral?: boolean;
-}) {
-  return NextResponse.json({
-    type: 4, // CHANNEL_MESSAGE_WITH_SOURCE
-    data: {
-      content: data.content,
-      embeds: data.embeds,
-      flags: data.ephemeral ? 64 : 0, // Ephemeral = only visible to user
-    },
-  });
 }
