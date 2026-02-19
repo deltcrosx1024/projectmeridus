@@ -112,6 +112,22 @@ export async function POST(request: Request) {
   const timestamp = request.headers.get('x-signature-timestamp');
   const body = await request.text();
 
+  // Parse the body to check interaction type
+  let interaction: any = {};
+  try {
+    interaction = JSON.parse(body);
+  } catch (e) {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  // Handle PING (type: 1) - Discord sends this to verify the endpoint
+  // Don't require signature for initial verification
+  if (interaction.type === 1) {
+    console.log('[Discord] Received PING - responding with PONG');
+    return NextResponse.json({ type: 1 });
+  }
+
+  // For other interactions, verify the signature
   if (!signature || !timestamp) {
     return NextResponse.json({ error: 'Missing signature headers' }, { status: 400 });
   }
