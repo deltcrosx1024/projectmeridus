@@ -19,7 +19,8 @@ export async function GET(request: Request) {
   // Try to get service from cookie first, then fall back to URL parameter
   let service: string | null = cookieStore.get('oauth_service')?.value || null;
   if (!service) {
-    service = url.searchParams.get('services');
+    // Also check for 'service' parameter (Discord uses this)
+    service = url.searchParams.get('service') || url.searchParams.get('services') || null;
   }
 
   if (!service || !code) {
