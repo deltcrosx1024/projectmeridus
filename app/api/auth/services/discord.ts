@@ -12,8 +12,9 @@ export async function handleDiscord(code: string, request: Request) {
     throw new Error("Discord OAuth not configured");
   }
 
-  const origin = new URL(request.url).origin;
-  const redirectUri = `${origin}/api/auth/callback?services=discord`;
+  // Extract redirect_uri from Discord's callback URL
+  const url = new URL(request.url);
+  const redirectUri = `${url.origin}/api/auth/callback`;
 
   const tokenResp = await fetch("https://discord.com/api/oauth2/token", {
     method: "POST",
