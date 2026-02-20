@@ -14,12 +14,14 @@ export async function GET(request: Request) {
   const cookieToken = cookieStore.get('github_token')?.value;
   const authHeader = request.headers.get('authorization');
   const headerToken = authHeader?.split(' ')[1];
-  const token = cookieToken ?? headerToken ?? process.env.GITHUB_TOKEN;
+  
+  // Use user's token only - do NOT fall back to hardcoded token
+  const token = cookieToken ?? headerToken;
   const url = new URL(request.url);
   const type = url.searchParams.get('type');
 
   if (!token) {
-    return NextResponse.json({ error: 'No GitHub token provided' }, { status: 401 });
+    return NextResponse.json({ error: 'Not authenticated. Please log in with GitHub.', needsAuth: true }, { status: 401 });
   }
 
   try {
