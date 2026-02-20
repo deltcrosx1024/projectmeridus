@@ -52,6 +52,12 @@ export function useGitHubRepos() {
         const response = await fetch('/api/github/repos');
         const data = await response.json();
         if (!response.ok) {
+          // If not authenticated, don't show error - just return empty
+          if (data?.needsAuth) {
+            setRepos([]);
+            setIsLoading(false);
+            return;
+          }
           const errMsg = data?.error || data?.message || 'Failed to fetch repos';
           throw new Error(errMsg);
         }
@@ -92,6 +98,12 @@ export function useGitHubIssues() {
         const response = await fetch('/api/github/issues');
         const data = await response.json();
         if (!response.ok) {
+          // If not authenticated, don't show error - just return empty
+          if (data?.needsAuth) {
+            setIssues([]);
+            setIsLoading(false);
+            return;
+          }
           const errMsg = data?.error || data?.message || 'Failed to fetch issues';
           throw new Error(errMsg);
         }
@@ -131,6 +143,12 @@ export function useGitHubPullRequests() {
         const response = await fetch('/api/github/issues?type=pull');
         const data = await response.json();
         if (!response.ok) {
+          // If not authenticated, don't show error - just return empty
+          if (data?.needsAuth) {
+            setPrs([]);
+            setIsLoading(false);
+            return;
+          }
           const errMsg = data?.error || data?.message || 'Failed to fetch pull requests';
           throw new Error(errMsg);
         }
@@ -169,6 +187,12 @@ export function useGitHubCommits(perRepo = 5, maxRepos = 10) {
         const response = await fetch(`/api/github/commits?per_repo=${perRepo}&max_repos=${maxRepos}`);
         const data = await response.json();
         if (!response.ok) {
+          // If not authenticated, don't show error - just return empty
+          if (data?.needsAuth) {
+            setCommits([]);
+            setIsLoading(false);
+            return;
+          }
           const errMsg = data?.error || data?.message || 'Failed to fetch commits';
           throw new Error(errMsg);
         }
