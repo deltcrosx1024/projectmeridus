@@ -7,8 +7,14 @@
  * - Two action buttons (Connect GitHub & Learn More)
  */
 'use client';
+import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { useState } from 'react';
+import Link from 'next/link';
 
 export default function HeroSection() {
+  const { githubUser, discordUser, isLoading } = useAuth();
+
   return (
     <div className="mb-16">
       {/* ===== HERO TITLE ===== */}
@@ -23,9 +29,21 @@ export default function HeroSection() {
 
       {/* ===== HERO CTA BUTTONS ===== */}
       <div className="flex gap-4">
-        <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-blue-500/50 transition-all">
-          Connect GitHub
-        </button>
+        {!isLoading && !githubUser && (
+          <button 
+            onClick={() => handleGitHubLogin(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '')}
+            className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-blue-500/50 transition-all"
+          >
+            Connect GitHub
+          </button>
+        )}
+        {!isLoading && githubUser && (
+          <div className="flex items-center gap-4">
+            <span className="text-green-400 font-semibold">
+              ✓ Connected as {githubUser.login}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
