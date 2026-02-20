@@ -1,7 +1,16 @@
-import { useLanguage } from '@/app/contexts/LanguageContext';
+'use client';
+
+import { useState, useEffect } from 'react';
 
 export default function PrivacyPolicy() {
-  const { language } = useLanguage();
+  const [language, setLanguage] = useState<'en' | 'ja'>('en');
+  
+  useEffect(() => {
+    const stored = localStorage.getItem('language');
+    if (stored === 'ja' || stored === 'en') {
+      setLanguage(stored);
+    }
+  }, []);
   
   const content = language === 'ja' ? {
     title: 'プライバシーポリシー',
