@@ -13,13 +13,17 @@ export async function handleGitHub(code: string, request: Request) {
     throw new Error('GitHub OAuth not configured');
   }
 
+  // Use fixed redirect URI from environment (must match GitHub OAuth App settings)
+  // Include ?services=github query parameter to match the configured redirect URI
+  const redirectUri = process.env.GITHUB_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?services=github`;
+
   const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri }),
   });
 
   const tokenJson = await tokenResp.json();
