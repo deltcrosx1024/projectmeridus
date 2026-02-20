@@ -13,8 +13,8 @@ export async function handleGitHub(code: string, request: Request) {
     throw new Error('GitHub OAuth not configured');
   }
 
-  // Use fixed redirect URI from environment (must match GitHub OAuth App settings)
-  // Include ?services=github query parameter to match the configured redirect URI
+  // Use dynamic redirect URI based on request origin (must match GitHub OAuth App callback URL)
+  // Uses ?services=github to match the frontend redirect URI
   const redirectUri = process.env.GITHUB_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?services=github`;
 
   const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
@@ -28,6 +28,12 @@ export async function handleGitHub(code: string, request: Request) {
 
   const tokenJson = await tokenResp.json();
   if (tokenJson.error) {
+    console.error('[GitHub OAuth Error]', {
+      error: tokenJson.error,
+      error_description: tokenJson.error_description,
+      client_id_used: clientId?.substring(0, 8) + '...',
+      redirect_uri_used: redirectUri,
+    });
     throw new Error(tokenJson.error_description || tokenJson.error);
   }
 
