@@ -1,7 +1,0 @@
-This is a dummy test file for testing bot notifications with git push.
-
-This file is intentionally created to trigger webhook notifications when pushed to the repository.
-
----
-Test Date: 2026-02-23
-Purpose: Testing GitHub webhook notifications
