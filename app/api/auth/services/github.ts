@@ -14,8 +14,8 @@ export async function handleGitHub(code: string, request: Request) {
   }
 
   // Use dynamic redirect URI based on request origin (must match GitHub OAuth App callback URL)
-  // Uses ?services=github to match the frontend redirect URI
-  const redirectUri = process.env.GITHUB_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?services=github`;
+  // Use service=github to match the frontend redirect URI
+  const redirectUri = process.env.GITHUB_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?service=github`;
 
   const tokenResp = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',

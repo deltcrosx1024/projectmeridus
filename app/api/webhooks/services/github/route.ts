@@ -6,12 +6,20 @@ import crypto from 'crypto';
  * POST /api/webhooks/services/github
  * GET /api/webhooks/services/github (for webhook verification)
  *
- * Receives GitHub repository events and forwards them to the Discord bot endpoint
+ * Receives GitHub repository events and forwards them to:
+ * 1. The Discord bot (meridusbot) for notifications
+ * 2. Internal webhook services for processing
+ * 
  * Configure in GitHub → Settings → Webhooks
  * - Payload URL: https://yourdomain.com/api/webhooks/services/github
  * - Content type: application/json
  * - Secret: Set GITHUB_WEBHOOK_SECRET env var
  */
+
+// Bot URL for forwarding events to meridusbot
+const getMeridusBotUrl = (): string | undefined => {
+  return process.env.MERIDUS_BOT_URL || process.env.NEXT_PUBLIC_MERIDUS_BOT_URL;
+};
 
 export async function GET() {
   // GitHub sends a GET request to verify the webhook endpoint
@@ -74,33 +82,39 @@ export async function POST(request: Request) {
         console.log(`[GitHub Webhook] Unhandled event type: ${event}`);
     }
 
-    // Send to Discord if message was generated
-    if (discordMessage) {
+    // Send to Discord bot (meridusbot) if configured
+    const meridusBotUrl = getMeridusBotUrl();
+    if (meridusBotUrl && discordMessage) {
       try {
-        // Get the origin from the request to build the webhook URL
-        const origin = new URL(request.url).origin;
-        const webhookUrl = `${origin}/api/webhooks?service=discord`;
-        
-        await fetch(webhookUrl, {
+        const botUrl = `${meridusBotUrl}/api/webhooks/github`;
+        await fetch(botUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-github-event': event || '',
+            'x-hub-signature-256': signature || '',
+            'x-api-key': process.env.MERIDUS_API_KEY || '',
+          },
           body: JSON.stringify({ 
             content: discordMessage,
             event: event,
+            deliveryId: deliveryId,
             repository: payload.repository,
             pusher: payload.pusher,
             commits: payload.commits,
             pull_request: payload.pull_request,
             issue: payload.issue,
             ref: payload.ref,
+            sender: payload.sender,
           }),
         });
+        console.log('[GitHub Webhook] Forwarded to meridusbot');
       } catch (err) {
-        console.error('[Webhook Forward Error]', err);
+        console.error('[Webhook Forward Error to Bot]', err);
       }
     }
 
-    return NextResponse.json({ received: true, event }, { status: 200 });
+    return NextResponse.json({ received: true, event, deliveryId }, { status: 200 });
   } catch (err: any) {
     console.error('[GitHub Webhook Error]', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

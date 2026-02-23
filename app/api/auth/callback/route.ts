@@ -30,11 +30,24 @@ export async function GET(request: Request) {
     );
   }
 
-  if (state) {
-    const sessionState = cookieStore.get('oauth_state')?.value;
-    if (state !== sessionState) {
-      return NextResponse.json({ error: 'Invalid state - CSRF check failed' }, { status: 403 });
-    }
+  // State parameter is required for CSRF protection
+  if (!state) {
+    return NextResponse.json(
+      { error: 'Missing state parameter - CSRF validation failed' },
+      { status: 400 }
+    );
+  }
+
+  const sessionState = cookieStore.get('oauth_state')?.value;
+  if (!sessionState) {
+    return NextResponse.json(
+      { error: 'Missing session state - CSRF validation failed' },
+      { status: 400 }
+    );
+  }
+
+  if (state !== sessionState) {
+    return NextResponse.json({ error: 'Invalid state - CSRF check failed' }, { status: 403 });
   }
 
   try {
