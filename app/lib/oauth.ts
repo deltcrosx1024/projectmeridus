@@ -1,13 +1,15 @@
+import { randomUUID } from 'crypto';
+
 /**
  * OAuth Login Helpers
  * Generate authorization URLs and state tokens for OAuth providers
  */
 
 /**
- * Generate a random state token for CSRF protection
+ * Generate a cryptographically secure random state token for CSRF protection
  */
 export function generateState(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return randomUUID();
 }
 
 /**
@@ -42,7 +44,7 @@ export function getDiscordAuthUrl(clientId: string, redirectUri: string, state?:
  * Usage: onClick={() => handleGitHubLogin()}
  */
 export function handleGitHubLogin(clientId: string): void {
-  const redirectUri = window.location.origin + '/api/auth/callback?services=github';
+  const redirectUri = window.location.origin + '/api/auth/callback?service=github';
   const state = generateState();
   
   // Store state and service type in cookies for CSRF validation
