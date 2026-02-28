@@ -122,8 +122,12 @@ export default function CTASection() {
           description: 'Add our Discord bot to your server to receive real-time notifications about your GitHub activity.',
           buttonText: 'Invite Bot to Server',
           buttonAction: () => {
-            const inviteUrl = process.env.NEXT_PUBLIC_DISCORD_BOT_INVITE_URL || 'https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=536870912&scope=bot';
-            window.open(inviteUrl, '_blank');
+            const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+            const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/callback?service=discord');
+            // Use Discord's current OAuth2 format with integration_type=0 for guild install
+            const inviteUrl = process.env.NEXT_PUBLIC_DISCORD_BOT_INVITE_URL || 
+              `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=536870912&scope=bot+applications.commands&integration_type=0`;
+            window.location.href = inviteUrl;
           },
         };
       }
