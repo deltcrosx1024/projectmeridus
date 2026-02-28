@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 
 interface GitHubUser {
   id: number;
@@ -30,38 +30,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    // Check for stored user data in cookies
+    mountedRef.current = true;
+    
     const checkAuth = () => {
-      const ghUserCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('github_user='))
-        ?.split('=')[1];
-      
-      const discordUserCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('discord_user='))
-        ?.split('=')[1];
+      try {
+        const ghUserCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('github_user='))
+          ?.split('=')[1];
+        
+        const discordUserCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('discord_user='))
+          ?.split('=')[1];
 
-      if (ghUserCookie) {
-        try {
-          setGithubUser(JSON.parse(decodeURIComponent(ghUserCookie)));
-        } catch (e) {
-          console.error('Failed to parse github_user cookie:', e);
+        if (ghUserCookie) {
+          try {
+            setGithubUser(JSON.parse(decodeURIComponent(ghUserCookie)));
+          } catch (e) {
+            console.error('Failed to parse github_user cookie:', e);
+          }
         }
-      }
 
-      if (discordUserCookie) {
-        try {
-          setDiscordUser(JSON.parse(decodeURIComponent(discordUserCookie)));
-        } catch (e) {
-          console.error('Failed to parse discord_user cookie:', e);
+        if (discordUserCookie) {
+          try {
+            setDiscordUser(JSON.parse(decodeURIComponent(discordUserCookie)));
+          } catch (e) {
+            console.error('Failed to parse discord_user cookie:', e);
+          }
         }
+      } catch (e) {
+        console.error('Auth check failed:', e);
       }
-
-      setIsLoading(false);
     };
 
     checkAuth();

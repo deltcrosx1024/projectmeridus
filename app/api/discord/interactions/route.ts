@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-
 import crypto from 'crypto';
 import { Octokit } from 'octokit';
 import { verifyKey } from 'discord-interactions';
