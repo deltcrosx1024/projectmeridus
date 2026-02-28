@@ -19,8 +19,8 @@ const BOT_API_KEY = process.env.MERIDUS_API_KEY;
 export async function GET() {
   return NextResponse.json({ 
     status: 'ok', 
-    message: 'Discord interactions endpoint is active. Use as Interaction Endpoint URL in Discord Developer Portal.'
-  });
+    message: 'Discord interactions endpoint is active'
+  }, { status: 200 });
 }
 
 // Handle POST requests (Discord interactions)
