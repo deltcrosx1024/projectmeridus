@@ -26,28 +26,39 @@ export async function POST(request: Request) {
   const timestamp = request.headers.get('x-signature-timestamp');
   const body = await request.text();
 
-  console.log('[Discord Interactions] Received request');
-
-  // Handle empty body
-  if (!body || body.trim() === '') {
-    console.log('[Discord Interactions] Empty body received');
-    return NextResponse.json({ error: 'Empty body' }, { status: 400 });
-  }
-
-  // Parse the body to check interaction type
-  let interaction: Record<string, unknown> = {};
-  try {
-    interaction = JSON.parse(body);
-  } catch (e) {
-    console.log('[Discord Interactions] JSON parse error:', e);
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+  console.log('[Discord Interactions] Received request, body length:', body?.length);
 
   // Handle PING (type: 1) - Discord sends this to verify the endpoint
   // According to Discord docs: respond with {"type": 1} immediately
+  // This should work WITHOUT signature validation for verification
+  if (body && body.includes('"type":1')) {
+    console.log('[Discord Interactions] Received PING - responding with PONG');
+    return new Response('{"type":1}', {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': '10',
+      },
+    });
+  }
+
+  // Handle other interaction types with signature validation
+  // Parse the body to check interaction type
+  let interaction: Record<string, unknown> = {};
+  try {
+    interaction = JSON.parse(body || '{}');
+  } catch (e) {
+    console.log('[Discord Interactions] JSON parse error:', e);
+    return new Response('{"error":"Invalid JSON"}', {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Handle PING (type: 1)
   if (interaction.type === 1) {
     console.log('[Discord Interactions] Received PING - responding with PONG');
-    return new Response(JSON.stringify({ type: 1 }), {
+    return new Response('{"type":1}', {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -56,20 +67,29 @@ export async function POST(request: Request) {
   // For other interactions, verify the signature
   if (!signature || !timestamp) {
     console.log('[Discord Interactions] Missing signature headers');
-    return NextResponse.json({ error: 'Missing signature headers' }, { status: 400 });
+    return new Response('{"error":"Missing signature headers"}', {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Verify Discord signature
   const publicKey = process.env.DISCORD_PUBLIC_KEY;
   if (!publicKey) {
     console.error('[Discord Interactions] DISCORD_PUBLIC_KEY not set');
-    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+    return new Response('{"error":"Server not configured"}', {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const isValid = verifyDiscordSignature(signature, timestamp, body, publicKey);
   if (!isValid) {
     console.log('[Discord Interactions] Invalid signature');
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    return new Response('{"error":"Invalid signature"}', {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Handle the interaction based on its type
