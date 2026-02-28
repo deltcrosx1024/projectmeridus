@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { Octokit } from 'octokit';
 
 /**
  * Discord Interactions Endpoint
@@ -7,9 +8,12 @@ import crypto from 'crypto';
  * GET  /api/discord/interactions - URL verification (returns PONG)
  *
  * Configure in Discord Developer Portal → Applications → Interactions Endpoint URL
- * URL: https://yourdomain.com/api/discord/interactions
+ * URL: https://www.meridusdev.in.th/api/discord/interactions
  * Public Key: Set DISCORD_PUBLIC_KEY in env
  */
+
+// Bot API Key for Discord bot to access website data
+const BOT_API_KEY = process.env.MERIDUS_API_KEY;
 
 // Handle GET requests (URL verification from Discord)
 export async function GET() {
@@ -94,6 +98,74 @@ export async function POST(request: Request) {
             content: '👋 Hello from Meridus!',
           },
         });
+      }
+
+      // Example: /status command - shows bot status
+      if (commandName === 'status') {
+        const botUrl = process.env.MERIDUS_BOT_URL || 'https://www.meridusdev.in.th';
+        return NextResponse.json({
+          type: 4,
+          data: {
+            content: `📊 **Meridus Bot Status**\n\n🌐 API URL: ${botUrl}\n✅ Status: Online\n🔒 HTTPS: Enabled`,
+          },
+        });
+      }
+
+      // Example: /repos command - fetches GitHub repositories
+      if (commandName === 'repos') {
+        try {
+          const githubToken = process.env.GITHUB_TOKEN;
+          if (!githubToken) {
+            return NextResponse.json({
+              type: 4,
+              data: { content: '❌ GitHub token not configured on server.' },
+            });
+          }
+          const octokit = new Octokit({ auth: githubToken });
+          const res = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 5 });
+          const repos = res.data.map(r => `• ${r.full_name} (⭐ ${r.stargazers_count})`).join('\n');
+          return NextResponse.json({
+            type: 4,
+            data: {
+              content: `📂 **Your GitHub Repositories:**\n${repos}`,
+            },
+          });
+        } catch (err) {
+          return NextResponse.json({
+            type: 4,
+            data: { content: `❌ Error fetching repos: ${err}` },
+          });
+        }
+      }
+
+      // Example: /issues command - fetches GitHub issues
+      if (commandName === 'issues') {
+        try {
+          const githubToken = process.env.GITHUB_TOKEN;
+          if (!githubToken) {
+            return NextResponse.json({
+              type: 4,
+              data: { content: '❌ GitHub token not configured on server.' },
+            });
+          }
+          const octokit = new Octokit({ auth: githubToken });
+          const searchRes = await octokit.rest.search.issuesAndPullRequests({
+            q: 'is:issue author:@me',
+            per_page: 5,
+          });
+          const issues = searchRes.data.items?.map(i => `• ${i.title} (#${i.number})`).join('\n') || 'No issues found';
+          return NextResponse.json({
+            type: 4,
+            data: {
+              content: `🐛 **Your GitHub Issues:**\n${issues}`,
+            },
+          });
+        } catch (err) {
+          return NextResponse.json({
+            type: 4,
+            data: { content: `❌ Error fetching issues: ${err}` },
+          });
+        }
       }
 
       // Default response for unknown commands
