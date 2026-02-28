@@ -126,7 +126,7 @@ export default function CTASection() {
             const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/callback?service=discord');
             // Use Discord's current OAuth2 format with integration_type=0 for guild install
             const inviteUrl = process.env.NEXT_PUBLIC_DISCORD_BOT_INVITE_URL || 
-              `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=536870912&scope=bot+applications.commands&integration_type=0`;
+              `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&response_type=code&redirect_uri=https%3A%2F%2Fwww.meridusdev.in.th%2Fapi%2Fauth%2Fcallback%3Fservice%3Ddiscord&integration_type=0&scope=webhook.incoming+applications.builds.read+presences.read+identify+bot+messages.read+applications.commands`;
             window.location.href = inviteUrl;
           },
         };
