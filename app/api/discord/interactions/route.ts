@@ -17,7 +17,7 @@ const BOT_API_KEY = process.env.MERIDUS_API_KEY;
 
 // Handle GET requests (URL verification from Discord)
 export async function GET() {
-  return new Response(null, { status: 200 });
+  return new Response('', { status: 200 });
 }
 
 // Handle POST requests (Discord interactions)
@@ -47,7 +47,10 @@ export async function POST(request: Request) {
   // According to Discord docs: respond with {"type": 1} immediately
   if (interaction.type === 1) {
     console.log('[Discord Interactions] Received PING - responding with PONG');
-    return NextResponse.json({ type: 1 });
+    return new Response(JSON.stringify({ type: 1 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // For other interactions, verify the signature
@@ -225,9 +228,8 @@ function verifyDiscordSignature(
     const sigBytes = Buffer.from(signature, 'hex');
     const keyBytes = Buffer.from(publicKey, 'hex');
 
-    // Verify the signature
     const isValid = crypto.verify(
-      undefined, // Let crypto deduce the algorithm from key type
+      'ed25519',
       message,
       keyBytes,
       sigBytes
