@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
+  const guildId = url.searchParams.get('guild_id');
   
   const cookieStore = await cookies();
   // Try to get service from cookie first, then fall back to URL parameter
@@ -23,6 +24,21 @@ export async function GET(request: Request) {
     service = url.searchParams.get('service') || url.searchParams.get('services') || null;
   }
 
+  // Handle Discord bot invite callback (has guild_id from successful bot install)
+  if (guildId) {
+    // Bot was successfully added to a server
+    // Store a cookie to indicate bot was invited
+    const res = NextResponse.redirect(new URL('/?bot_invited=true', request.url));
+    res.cookies.set('bot_invited_guild', guildId, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+    return res;
+  }
+
   if (!service || !code) {
     return NextResponse.json(
       { error: 'Missing service or code parameter' },
@@ -30,7 +46,7 @@ export async function GET(request: Request) {
     );
   }
 
-  // State parameter is required for CSRF protection
+  // State parameter is required for CSRF protection (user login only)
   if (!state) {
     return NextResponse.json(
       { error: 'Missing state parameter - CSRF validation failed' },
