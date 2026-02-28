@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-
 /**
  * OAuth Login Helpers
  * Generate authorization URLs and state tokens for OAuth providers
@@ -7,9 +5,18 @@ import { randomUUID } from 'crypto';
 
 /**
  * Generate a cryptographically secure random state token for CSRF protection
+ * Uses window.crypto for client-side compatibility
  */
 export function generateState(): string {
-  return randomUUID();
+  if (typeof window !== 'undefined' && window.crypto) {
+    return window.crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 /**
