@@ -17,10 +17,7 @@ const BOT_API_KEY = process.env.MERIDUS_API_KEY;
 
 // Handle GET requests (URL verification from Discord)
 export async function GET() {
-  return NextResponse.json({ 
-    status: 'ok', 
-    message: 'Discord interactions endpoint is active'
-  }, { status: 200 });
+  return new Response(null, { status: 200 });
 }
 
 // Handle POST requests (Discord interactions)
