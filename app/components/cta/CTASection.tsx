@@ -123,11 +123,12 @@ export default function CTASection() {
           buttonText: 'Invite Bot to Server',
           buttonAction: () => {
             const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-            // Use Discord's bot install URL - simpler format without response_type/redirect_uri for pure bot invites
-            // If you need user login + bot install, use the OAuth2 URL instead
+            const redirectUri = encodeURIComponent(globalThis.location.origin + '/api/auth/callback?service=discord');
+            // Hybrid OAuth2: User login + Bot install in one flow
+            // Requires response_type=code and redirect_uri for callback handling
             const inviteUrl = process.env.NEXT_PUBLIC_DISCORD_BOT_INVITE_URL || 
-              `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot+applications.commands`;
-            globalThis.location.href = inviteUrl;
+                `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&response_type=code&redirect_uri=${redirectUri}&integration_type=0&scope=webhook.incoming+applications.commands+bot`;
+              globalThis.location.href = inviteUrl;
           },
         };
       }
