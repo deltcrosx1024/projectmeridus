@@ -33,17 +33,18 @@ export function getGitHubAuthUrl(clientId: string, redirectUri: string, state?: 
 }
 
 /**
- * Get Discord OAuth authorization URL
+ * Get Discord OAuth authorization URL (User Login + Bot Install)
  */
-export function getDiscordAuthUrl(clientId: string, redirectUri: string, state?: string): string {
+export function getDiscordAuthUrl(clientId: string, redirectUri: string, state?: string, permissions: string = '8'): string {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'identify email guilds',
+    scope: 'identify email guilds bot applications.commands',
     response_type: 'code',
+    permissions,
     ...(state && { state }),
   });
-  return `https://discord.com/api/oauth2/authorize?${params}`;
+  return `https://discord.com/oauth2/authorize?${params}`;
 }
 
 /**
@@ -62,10 +63,10 @@ export function handleGitHubLogin(clientId: string): void {
 }
 
 /**
- * Client-side hook example for Discord login
+ * Client-side hook example for Discord login + Bot install
  * Usage: onClick={() => handleDiscordLogin()}
  */
-export function handleDiscordLogin(clientId: string): void {
+export function handleDiscordLogin(clientId: string, permissions: string = '8'): void {
   // Use dynamic origin with service parameter - must match Discord Developer Portal redirect URI
   const redirectUri = window.location.origin + '/api/auth/callback?service=discord';
   const state = generateState();
@@ -74,5 +75,5 @@ export function handleDiscordLogin(clientId: string): void {
   document.cookie = `oauth_state=${state}; path=/; max-age=600`; // 10 minutes
   document.cookie = `oauth_service=discord; path=/; max-age=600`;
   
-  window.location.href = getDiscordAuthUrl(clientId, redirectUri, state);
+  window.location.href = getDiscordAuthUrl(clientId, redirectUri, state, permissions);
 }
