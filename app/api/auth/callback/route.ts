@@ -16,6 +16,16 @@ export async function GET(request: Request) {
   const state = url.searchParams.get('state');
   const guildId = url.searchParams.get('guild_id');
   const permissions = url.searchParams.get('permissions');
+  const error = url.searchParams.get('error');
+  const errorDescription = url.searchParams.get('error_description');
+  
+  // Handle OAuth errors from Discord
+  if (error) {
+    console.error(`[OAuth Error] ${error}: ${errorDescription}`);
+    return NextResponse.redirect(
+      new URL(`/?error=${encodeURIComponent(error)}&message=${encodeURIComponent(errorDescription || '')}`, request.url)
+    );
+  }
   
   const cookieStore = await cookies();
   // Try to get service from cookie first, then fall back to URL parameter

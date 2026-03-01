@@ -84,16 +84,18 @@ export async function POST(request: Request) {
 
     // Send to Discord bot (meridusbot) if configured
     const meridusBotUrl = getMeridusBotUrl();
-    if (meridusBotUrl && discordMessage) {
+    const meridusApiKey = process.env.MERIDUS_API_KEY;
+    
+    if (meridusBotUrl && meridusApiKey && discordMessage) {
       try {
         const botUrl = `${meridusBotUrl}/api/webhooks/github`;
-        await fetch(botUrl, {
+        const response = await fetch(botUrl, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'x-github-event': event || '',
             'x-hub-signature-256': signature || '',
-            'x-api-key': process.env.MERIDUS_API_KEY || '',
+            'x-api-key': meridusApiKey,
           },
           body: JSON.stringify({ 
             content: discordMessage,
@@ -108,10 +110,17 @@ export async function POST(request: Request) {
             sender: payload.sender,
           }),
         });
-        console.log('[GitHub Webhook] Forwarded to meridusbot');
+        
+        if (!response.ok) {
+          console.error('[GitHub Webhook] Bot returned error:', response.status);
+        } else {
+          console.log('[GitHub Webhook] Forwarded to meridusbot successfully');
+        }
       } catch (err) {
         console.error('[Webhook Forward Error to Bot]', err);
       }
+    } else {
+      console.log('[GitHub Webhook] Bot not configured, skipping forward');
     }
 
     return NextResponse.json({ received: true, event, deliveryId }, { status: 200 });
