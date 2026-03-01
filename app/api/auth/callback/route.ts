@@ -26,29 +26,16 @@ export async function GET(request: Request) {
   }
 
   // Auto-detect Discord callback if no service specified
-  // Discord callbacks have: code + permissions (and optionally guild_id)
-  if (!service && code && permissions) {
+  // Discord callbacks have: code + guild_id (bot install) or just code (user login)
+  if (!service && code) {
+    // If guild_id is present, it's a bot install
+    // If only code is present without state/cookie, assume Discord
     service = 'discord';
   }
 
-  // Handle Discord bot invite callback (has guild_id from successful bot install)
-  // Bot installs may have 'permissions' param but no 'code' or with 'code'
-  if (guildId && !service) {
-    // Bot was successfully added to a server
-    // Store a cookie to indicate bot was invited
-    const res = NextResponse.redirect(new URL('/?bot_invited=true', request.url));
-    res.cookies.set('bot_invited_guild', guildId, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24, // 1 day
-    });
-    return res;
-  }
-
-  // Also handle case where bot install includes permissions param but no service
-  if (guildId && permissions && !service) {
+  // Handle Discord bot install success (guild_id present = bot was added)
+  // This is a pure bot install without user auth
+  if (guildId && !code) {
     const res = NextResponse.redirect(new URL('/?bot_invited=true', request.url));
     res.cookies.set('bot_invited_guild', guildId, {
       httpOnly: false,
@@ -67,12 +54,17 @@ export async function GET(request: Request) {
     );
   }
 
-  // Skip state validation for Discord bot installs (they don't have state)
-  // Bot installs are identified by having permissions + guild_id without state
-  const isDiscordBotInstall = service === 'discord' && permissions && guildId && !state;
+  // Check if we have a session state cookie (indicates user-initiated OAuth flow)
+  const sessionState = cookieStore.get('oauth_state')?.value;
+  const hasSessionCookie = !!cookieStore.get('oauth_service')?.value;
+  
+  // Skip state validation if:
+  // 1. No state in URL AND no session cookie (bot install without user auth)
+  // 2. Discord bot install with guild_id (different flow)
+  const skipStateCheck = (!state && !hasSessionCookie) || (service === 'discord' && guildId && !state);
   
   // State parameter is required for CSRF protection (user login only)
-  if (!state && !isDiscordBotInstall) {
+  if (!state && !skipStateCheck) {
     return NextResponse.json(
       { error: 'Missing state parameter - CSRF validation failed' },
       { status: 400 }
@@ -80,15 +72,7 @@ export async function GET(request: Request) {
   }
 
   // Only validate state for user OAuth flows (not bot installs)
-  if (!isDiscordBotInstall) {
-    const sessionState = cookieStore.get('oauth_state')?.value;
-    if (!sessionState) {
-      return NextResponse.json(
-        { error: 'Missing session state - CSRF validation failed' },
-        { status: 400 }
-      );
-    }
-
+  if (!skipStateCheck && state && sessionState) {
     if (state !== sessionState) {
       return NextResponse.json({ error: 'Invalid state - CSRF check failed' }, { status: 403 });
     }
