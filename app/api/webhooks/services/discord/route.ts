@@ -227,7 +227,8 @@ export async function POST(request: Request) {
   }
 }
 
-// Verify Discord interaction signature
+// Verify Discord interaction signature using Ed25519
+// Discord uses Ed25519 for interaction verification
 
 function verifyDiscordSignature(
   signature: string,
@@ -240,12 +241,26 @@ function verifyDiscordSignature(
     const sigBytes = Buffer.from(signature, 'hex');
     const keyBytes = Buffer.from(publicKey, 'hex');
     
-    // Use Node.js crypto.verify with raw Ed25519 key
-    // Note: Node.js uses 'sha512' combined with ed25519 key for Ed25519 signatures
+    // Discord uses raw Ed25519 (not in X509 format)
+    // We need to create a proper key object for Node.js crypto
+    // Ed25519 public key needs to be wrapped in SPKI format for Node.js
+    const spkiPrefix = Buffer.from([
+      0x30, 0x2a, // SEQUENCE
+      0x30, 0x05, // SEQUENCE (algorithm identifier)
+      0x06, 0x03, 0x2b, 0x65, 0x70, // OID Ed25519 (1.3.101.112)
+      0x03, 0x21, 0x00, // BIT STRING prefix
+    ]);
+    
+    const spkiKey = Buffer.concat([spkiPrefix, keyBytes]);
+    
     const isValid = crypto.verify(
-      undefined, // Let crypto deduce the algorithm from key type
+      undefined, // Let crypto deduce from key
       message,
-      keyBytes,
+      {
+        key: spkiKey,
+        format: 'der',
+        type: 'spki',
+      },
       sigBytes
     );
     return isValid;
