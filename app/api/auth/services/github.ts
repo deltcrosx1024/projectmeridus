@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { Octokit } from 'octokit';
+import { linkUser } from '@/app/lib/userLinks';
 
 /**
  * Handle GitHub OAuth callback
@@ -73,6 +75,34 @@ export async function handleGitHub(code: string, request: Request) {
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
+
+  // Check if user already has Discord linked - if so, link them together
+  const cookieStore = await cookies();
+  const discordUserCookie = cookieStore.get('discord_user')?.value;
+  
+  if (discordUserCookie && accessToken) {
+    try {
+      const discordUser = JSON.parse(discordUserCookie);
+      
+      await linkUser(discordUser.id, accessToken, {
+        discordUsername: discordUser.username,
+        githubUsername: user.data.login,
+      });
+      
+      console.log(`[GitHub OAuth] Linked Discord ${discordUser.id} to GitHub ${user.data.login}`);
+      
+      // Set a cookie to indicate successful linking
+      res.cookies.set('accounts_linked', 'true', {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 5, // 5 minutes - just for notification
+      });
+    } catch (err) {
+      console.error('[GitHub OAuth] Failed to link accounts:', err);
+    }
+  }
 
   return res;
 }

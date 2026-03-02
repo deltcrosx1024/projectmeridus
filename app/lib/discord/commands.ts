@@ -9,41 +9,58 @@ import {
   EmbedColors,
   DiscordEmbed
 } from "@/app/types/discord";
+import { 
+  addSubscription, 
+  removeSubscription, 
+  getAllSubscriptions, 
+  getSubscriptionCount 
+} from "@/app/lib/subscriptions";
+import { getUserLink, hasLinkedGitHub } from "@/app/lib/userLinks";
+import { Octokit } from "octokit";
 
-// Environment configuration
-const MERIDUS_URL = process.env.MERIDUS_BOT_URL || 'https://www.meridusdev.in.th';
-const MERIDUS_API_KEY = process.env.MERIDUS_API_KEY || '';
-const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
+// Environment configuration - fallback server token
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 
-// API helper functions
-async function callMeridusAPI(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
-  const url = `${MERIDUS_URL}${endpoint}`;
+// Get Octokit for a Discord user (using their linked GitHub token)
+async function getUserOctokit(interaction: DiscordInteraction): Promise<Octokit | null> {
+  const discordUserId = interaction.member?.user?.id || interaction.user?.id;
   
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (MERIDUS_API_KEY) {
-    headers['x-api-key'] = MERIDUS_API_KEY;
+  if (!discordUserId) {
+    return null;
   }
   
-  const options: RequestInit = {
-    method,
-    headers,
-  };
-  
-  if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-    options.body = JSON.stringify(body);
+  // Try to get the user's linked GitHub token
+  const userLink = await getUserLink(discordUserId);
+  if (userLink) {
+    return new Octokit({ auth: userLink.githubToken });
   }
   
-  const response = await fetch(url, options);
-  const data = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(data.error || `API Error: ${response.status}`);
+  // Fallback to server token if available
+  if (GITHUB_TOKEN) {
+    return new Octokit({ auth: GITHUB_TOKEN });
   }
   
-  return data;
+  return null;
+}
+
+// Check if user has GitHub access
+async function checkGitHubAccess(interaction: DiscordInteraction): Promise<{ ok: boolean; message?: string }> {
+  const discordUserId = interaction.member?.user?.id || interaction.user?.id;
+  
+  if (!discordUserId) {
+    return { ok: false, message: '❌ Could not identify Discord user.' };
+  }
+  
+  const hasLink = await hasLinkedGitHub(discordUserId);
+  if (!hasLink && !GITHUB_TOKEN) {
+    return { 
+      ok: false, 
+      message: '🔒 **GitHub not linked.**\n\nPlease log in to the website with both GitHub and Discord:\n' +
+        '🔗 <https://www.meridusdev.in.th>' 
+    };
+  }
+  
+  return { ok: true };
 }
 
 // Command registry
@@ -65,7 +82,6 @@ export const commands: Record<string, DiscordCommand> = {
     name: 'status',
     description: 'Show bot status, uptime, and system information',
     execute: async () => {
-      // Calculate uptime (server start time approximation)
       const uptimeSeconds = process.uptime ? Math.floor(process.uptime()) : 0;
       const days = Math.floor(uptimeSeconds / 86400);
       const hours = Math.floor((uptimeSeconds % 86400) / 3600);
@@ -76,14 +92,8 @@ export const commands: Record<string, DiscordCommand> = {
         ? `${days}d ${hours}h ${minutes}m ${seconds}s`
         : `${hours}h ${minutes}m ${seconds}s`;
       
-      // Get subscription count from API
-      let subscriptionCount = 0;
-      try {
-        const subs = await callMeridusAPI('/api/meridus/subscriptions');
-        subscriptionCount = subs.subscriptions?.length || subs.length || 0;
-      } catch (e) {
-        // Ignore error, show 0
-      }
+      // Get subscription count directly from storage
+      const subscriptionCount = await getSubscriptionCount();
       
       const embed: DiscordEmbed = {
         title: '📊 Meridus Bot Status',
@@ -104,11 +114,6 @@ export const commands: Record<string, DiscordCommand> = {
             name: '📡 Subscriptions',
             value: subscriptionCount.toString(),
             inline: true
-          },
-          {
-            name: '🌐 API URL',
-            value: MERIDUS_URL,
-            inline: false
           },
         ],
         footer: {
@@ -140,7 +145,7 @@ export const commands: Record<string, DiscordCommand> = {
       },
       {
         name: 'events',
-        description: 'Events to subscribe to (default: all)',
+        description: 'Events to subscribe to (default: push,issues,pr,release)',
         type: 3, // STRING
         required: false
       }
@@ -161,11 +166,7 @@ export const commands: Record<string, DiscordCommand> = {
       const events = eventsStr.split(',').map(e => e.trim()).filter(e => e);
       
       try {
-        await callMeridusAPI('/api/meridus/subscriptions/add', 'POST', {
-          channelId,
-          repo,
-          events
-        });
+        await addSubscription(channelId, repo, events, interaction.guild_id);
         
         const embed: DiscordEmbed = {
           title: '✅ Subscription Added',
@@ -187,6 +188,7 @@ export const commands: Record<string, DiscordCommand> = {
         
         return { embeds: [embed] };
       } catch (err: any) {
+        console.error('[Subscribe] Error:', err);
         return {
           content: `❌ Failed to subscribe: ${err.message || 'Unknown error'}`,
         };
@@ -218,10 +220,15 @@ export const commands: Record<string, DiscordCommand> = {
       const repo = (args.repo as string) || '';
       
       try {
-        await callMeridusAPI('/api/meridus/subscriptions/remove', 'POST', {
-          channelId,
-          repo
-        });
+        const removed = await removeSubscription(channelId, repo);
+        
+        if (!removed) {
+          return {
+            content: repo 
+              ? `⚠️ No subscription found for **${repo}** in <#${channelId}>`
+              : `⚠️ No subscriptions found for <#${channelId}>`,
+          };
+        }
         
         if (repo) {
           return {
@@ -233,6 +240,7 @@ export const commands: Record<string, DiscordCommand> = {
           };
         }
       } catch (err: any) {
+        console.error('[Unsubscribe] Error:', err);
         return {
           content: `❌ Failed to unsubscribe: ${err.message || 'Unknown error'}`,
         };
@@ -257,8 +265,7 @@ export const commands: Record<string, DiscordCommand> = {
       const channelFilter = args.channel as string;
       
       try {
-        const data = await callMeridusAPI('/api/meridus/subscriptions');
-        const subscriptions = data.subscriptions || data || [];
+        const subscriptions = await getAllSubscriptions();
         
         if (subscriptions.length === 0) {
           return {
@@ -268,7 +275,7 @@ export const commands: Record<string, DiscordCommand> = {
         
         // Filter by channel if specified
         const filtered = channelFilter 
-          ? subscriptions.filter((sub: any) => sub.channelId === channelFilter)
+          ? subscriptions.filter((sub) => sub.channelId === channelFilter)
           : subscriptions;
         
         if (filtered.length === 0) {
@@ -278,7 +285,7 @@ export const commands: Record<string, DiscordCommand> = {
         }
         
         // Group by channel
-        const byChannel: Record<string, any[]> = {};
+        const byChannel: Record<string, typeof subscriptions> = {};
         for (const sub of filtered) {
           if (!byChannel[sub.channelId]) {
             byChannel[sub.channelId] = [];
@@ -286,9 +293,9 @@ export const commands: Record<string, DiscordCommand> = {
           byChannel[sub.channelId].push(sub);
         }
         
-        const lines = Object.entries(byChannel).map(([channelId, subs]) => {
-          const repoList = subs.map((s: any) => `  • ${s.repo} (${s.events?.join(', ') || 'all'})`).join('\n');
-          return `<#${channelId}>:\n${repoList}`;
+        const lines = Object.entries(byChannel).map(([chanId, subs]) => {
+          const repoList = subs.map((s) => `  • ${s.repo} (${s.events?.join(', ') || 'all'})`).join('\n');
+          return `<#${chanId}>:\n${repoList}`;
         });
         
         const embed: DiscordEmbed = {
@@ -302,6 +309,7 @@ export const commands: Record<string, DiscordCommand> = {
         
         return { embeds: [embed] };
       } catch (err: any) {
+        console.error('[List] Error:', err);
         return {
           content: `❌ Failed to list subscriptions: ${err.message || 'Unknown error'}`,
         };
@@ -347,14 +355,31 @@ export const commands: Record<string, DiscordCommand> = {
   repos: {
     name: 'repos',
     description: 'List your GitHub repositories',
-    execute: async () => {
+    execute: async (interaction: DiscordInteraction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) {
+        return { content: access.message };
+      }
+      
+      const octokit = await getUserOctokit(interaction);
+      
+      if (!octokit) {
+        return {
+          content: '❌ GitHub authentication failed.',
+        };
+      }
+      
       try {
-        // Call the GitHub repos API through the website
-        const repos = await callMeridusAPI('/api/github/repos');
+        const res = await octokit.rest.repos.listForAuthenticatedUser({ 
+          per_page: 100,
+          sort: 'updated'
+        });
         
-        if (!Array.isArray(repos) || repos.length === 0) {
+        const repos = res.data;
+        
+        if (repos.length === 0) {
           return {
-            content: '📂 No repositories found or authentication required.',
+            content: '📂 No repositories found.',
           };
         }
         
@@ -367,7 +392,7 @@ export const commands: Record<string, DiscordCommand> = {
         }).join('\n');
         
         const embed: DiscordEmbed = {
-          title: '📂 Your GitHub Repositories',
+          title: '📂 GitHub Repositories',
           description: repoList,
           color: EmbedColors.GITHUB,
           footer: {
@@ -377,9 +402,10 @@ export const commands: Record<string, DiscordCommand> = {
         
         return { embeds: [embed] };
       } catch (err: any) {
-        if (err.message?.includes('401') || err.message?.includes('authentication')) {
+        console.error('[Repos] Error:', err);
+        if (err.status === 401) {
           return {
-            content: '🔒 Authentication required. Please log in to GitHub through the website.',
+            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
           };
         }
         return {
@@ -402,18 +428,67 @@ export const commands: Record<string, DiscordCommand> = {
       }
     ],
     execute: async (interaction: DiscordInteraction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) {
+        return { content: access.message };
+      }
+      
+      const octokit = await getUserOctokit(interaction);
+      
+      if (!octokit) {
+        return {
+          content: '❌ GitHub authentication failed.',
+        };
+      }
+      
       const args = parseOptions(interaction);
       const repoFilter = args.repo as string;
       
       try {
-        let endpoint = '/api/github/issues';
+        let issues: any[] = [];
+        
         if (repoFilter) {
-          endpoint += `?repo=${encodeURIComponent(repoFilter)}`;
+          // Get issues from specific repo
+          const [owner, repo] = repoFilter.split('/');
+          if (!owner || !repo) {
+            return {
+              content: '❌ Invalid repository format. Use: `owner/repo`',
+            };
+          }
+          
+          const res = await octokit.rest.issues.listForRepo({
+            owner,
+            repo,
+            state: 'open',
+            per_page: 10
+          });
+          issues = res.data;
+        } else {
+          // Get issues from all repos
+          const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ 
+            per_page: 50 
+          });
+          
+          const repos = reposRes.data;
+          const issuePromises = repos.map(async (repo: any) => {
+            try {
+              const res = await octokit.rest.issues.listForRepo({
+                owner: repo.owner.login,
+                repo: repo.name,
+                state: 'open',
+                per_page: 5
+              });
+              return res.data.map((i: any) => ({ ...i, repo_name: repo.full_name }));
+            } catch (e) {
+              return [];
+            }
+          });
+          
+          const allIssues = await Promise.all(issuePromises);
+          issues = allIssues.flat().slice(0, 10);
         }
         
-        const issues = await callMeridusAPI(endpoint);
-        
-        if (!Array.isArray(issues) || issues.length === 0) {
+        if (issues.length === 0) {
           return {
             content: repoFilter 
               ? `🐛 No open issues found in **${repoFilter}**.`
@@ -421,9 +496,8 @@ export const commands: Record<string, DiscordCommand> = {
           };
         }
         
-        const topIssues = issues.slice(0, 10);
-        const issueList = topIssues.map((i: any) => {
-          const repo = i.repository?.full_name || i.repository_url?.split('/').slice(-2).join('/') || 'unknown';
+        const issueList = issues.map((i: any) => {
+          const repo = i.repo_name || i.repository?.full_name || `${i.repository_url?.split('/').slice(-2).join('/')}`;
           const labels = i.labels?.map((l: any) => l.name).join(', ') || '';
           return `• **${repo}#${i.number}** ${i.title}${labels ? ` [${labels}]` : ''}`;
         }).join('\n');
@@ -433,12 +507,18 @@ export const commands: Record<string, DiscordCommand> = {
           description: issueList,
           color: EmbedColors.WARNING,
           footer: {
-            text: `Showing ${topIssues.length} of ${issues.length} issues${repoFilter ? ` in ${repoFilter}` : ''}`
+            text: `Showing ${issues.length} open issues${repoFilter ? ` in ${repoFilter}` : ''}`
           }
         };
         
         return { embeds: [embed] };
       } catch (err: any) {
+        console.error('[Issues] Error:', err);
+        if (err.status === 401) {
+          return {
+            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
+          };
+        }
         return {
           content: `❌ Failed to fetch issues: ${err.message || 'Unknown error'}`,
         };
@@ -459,31 +539,85 @@ export const commands: Record<string, DiscordCommand> = {
       }
     ],
     execute: async (interaction: DiscordInteraction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) {
+        return { content: access.message };
+      }
+
+      const octokit = await getUserOctokit(interaction);
+
+      if (!octokit) {
+        return {
+          content: '❌ GitHub authentication failed.',
+        };
+      }
+
       const args = parseOptions(interaction);
       const repoFilter = args.repo as string;
-      
+
       try {
-        let endpoint = '/api/github/commits';
+        let commits: any[] = [];
+
         if (repoFilter) {
-          endpoint += `?repo=${encodeURIComponent(repoFilter)}`;
+          // Get commits from specific repo
+          const [owner, repo] = repoFilter.split('/');
+          if (!owner || !repo) {
+            return {
+              content: '❌ Invalid repository format. Use: `owner/repo`',
+            };
+          }
+
+          const res = await octokit.rest.repos.listCommits({
+            owner,
+            repo,
+            per_page: 10
+          });
+          commits = res.data.map((c: any) => ({ ...c, repo_name: repoFilter }));
+        } else {
+          // Get commits from all repos
+          const reposRes = await octokit.rest.repos.listForAuthenticatedUser({
+            per_page: 10,
+            sort: 'updated'
+          });
+
+          const repos = reposRes.data;
+          const commitPromises = repos.map(async (repo: any) => {
+            try {
+              const res = await octokit.rest.repos.listCommits({
+                owner: repo.owner.login,
+                repo: repo.name,
+                per_page: 5
+              });
+              return res.data.map((c: any) => ({
+                ...c,
+                repo_name: repo.name,
+                repo_owner: repo.owner.login
+              }));
+            } catch (e) {
+              return [];
+            }
+          });
+
+          const allCommits = await Promise.all(commitPromises);
+          commits = allCommits
+            .flat()
+            .sort((a: any, b: any) => new Date(b.commit.author?.date || 0).getTime() - new Date(a.commit.author?.date || 0).getTime())
+            .slice(0, 10);
         }
-        
-        const commits = await callMeridusAPI(endpoint);
-        
-        if (!Array.isArray(commits) || commits.length === 0) {
+
+        if (commits.length === 0) {
           return {
-            content: repoFilter 
+            content: repoFilter
               ? `📝 No commits found in **${repoFilter}**.`
               : '📝 No commits found across your repositories.',
           };
         }
-        
-        const topCommits = commits.slice(0, 10);
-        const commitList = topCommits.map((c: any) => {
-          const message = c.message?.split('\n')[0]?.substring(0, 50) || 'No message';
+
+        const commitList = commits.map((c: any) => {
+          const message = c.commit.message?.split('\n')[0]?.substring(0, 50) || 'No message';
           const sha = c.sha?.substring(0, 7) || 'unknown';
           const repo = c.repo_name || 'unknown';
-          return `• **\`${sha}\`** [${repo}] ${message}${c.message?.length > 50 ? '...' : ''}`;
+          return `• **\`${sha}\`** [${repo}] ${message}${c.commit.message?.length > 50 ? '...' : ''}`;
         }).join('\n');
         
         const embed: DiscordEmbed = {
@@ -491,12 +625,18 @@ export const commands: Record<string, DiscordCommand> = {
           description: commitList,
           color: EmbedColors.INFO,
           footer: {
-            text: `Showing ${topCommits.length} of ${commits.length} commits${repoFilter ? ` in ${repoFilter}` : ''}`
+            text: `Showing ${commits.length} commits${repoFilter ? ` in ${repoFilter}` : ''}`
           }
         };
         
         return { embeds: [embed] };
       } catch (err: any) {
+        console.error('[Commits] Error:', err);
+        if (err.status === 401) {
+          return {
+            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
+          };
+        }
         return {
           content: `❌ Failed to fetch commits: ${err.message || 'Unknown error'}`,
         };

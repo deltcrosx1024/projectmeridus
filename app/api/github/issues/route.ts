@@ -15,8 +15,8 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   const headerToken = authHeader?.split(' ')[1];
   
-  // Use user's token only - do NOT fall back to hardcoded token
-  const token = cookieToken ?? headerToken;
+  // Use user's token first, fall back to server token for Discord bot
+  const token = cookieToken ?? headerToken ?? process.env.GITHUB_TOKEN;
   const url = new URL(request.url);
   const type = url.searchParams.get('type');
 
