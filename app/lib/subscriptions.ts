@@ -25,7 +25,16 @@ export async function loadSubscriptions(): Promise<Subscription[]> {
     if (!data) {
       return [];
     }
-    return JSON.parse(data) as Subscription[];
+
+    // Handle both string and already-parsed object
+    if (typeof data === 'string') {
+      return JSON.parse(data) as Subscription[];
+    } else if (Array.isArray(data)) {
+      return data as Subscription[];
+    } else {
+      console.error('[Subscriptions] Unexpected data type:', typeof data, data);
+      return [];
+    }
   } catch (error) {
     console.error('[Subscriptions] Error loading from Redis:', error);
     return [];
