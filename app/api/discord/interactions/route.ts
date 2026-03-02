@@ -9,6 +9,58 @@ import {
 
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
 
+/**
+ * Execute a rebase via GitHub API
+ */
+async function executeRebase(repo: string, prNumber: string): Promise<void> {
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName) {
+    throw new Error('Invalid repository format');
+  }
+
+  const githubToken = process.env.GITHUB_TOKEN;
+  if (!githubToken) {
+    throw new Error('GitHub token not configured');
+  }
+
+  // Get PR details to find the head branch
+  const prResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
+    {
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    }
+  );
+
+  if (!prResponse.ok) {
+    throw new Error(`Failed to get PR details: ${prResponse.statusText}`);
+  }
+
+  const pr = await prResponse.json();
+
+  // Update the PR branch with base branch changes (rebase)
+  const updateResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/update-branch`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${githubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+      body: JSON.stringify({
+        expected_head_sha: pr.head.sha,
+      }),
+    }
+  );
+
+  if (!updateResponse.ok && updateResponse.status !== 202) {
+    const error = await updateResponse.json().catch(() => ({ message: updateResponse.statusText }));
+    throw new Error(error.message || `Failed to rebase: ${updateResponse.status}`);
+  }
+}
+
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -157,12 +209,64 @@ export async function POST(request: Request) {
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
     const customId = interaction.data?.custom_id;
     console.log(`[Discord] Component interaction: ${customId}`);
-    
+
+    // Handle rebase confirmation
+    if (customId?.startsWith('gh:rebase:') && customId.endsWith(':confirm')) {
+      // Show confirmation modal
+      const parts = customId.split(':');
+      const repo = parts[2];
+      const prNumber = parts[3];
+
+      return new Response(
+        JSON.stringify({
+          type: InteractionResponseType.MODAL,
+          data: {
+            custom_id: `gh:rebase:${repo}:${prNumber}:execute`,
+            title: '⚠️ Confirm Rebase',
+            components: [{
+              type: 1, // Action Row
+              components: [{
+                type: 4, // Text Input
+                custom_id: 'confirm_text',
+                label: 'Type "REBASE" to confirm',
+                style: 1, // Short
+                min_length: 6,
+                max_length: 6,
+                required: true,
+                placeholder: 'REBASE',
+              }],
+            }],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Handle other GitHub actions (placeholder for now)
+    if (customId?.startsWith('gh:')) {
+      return new Response(
+        JSON.stringify({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `🔄 Action \`${customId}\` received. This feature is coming soon!`,
+            flags: 64, // Ephemeral
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: { content: `✅ You clicked: **${customId}**` }
-      }), 
+      }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -186,12 +290,73 @@ export async function POST(request: Request) {
 
   // Handle MODAL_SUBMIT (type 5)
   if (interaction.type === InteractionType.MODAL_SUBMIT) {
-    console.log(`[Discord] Modal submit: ${interaction.data?.custom_id}`);
+    const customId = interaction.data?.custom_id;
+    console.log(`[Discord] Modal submit: ${customId}`);
+
+    // Handle rebase confirmation
+    if (customId?.startsWith('gh:rebase:') && customId.endsWith(':execute')) {
+      const values = interaction.data?.components?.[0]?.components?.[0]?.value;
+
+      if (values !== 'REBASE') {
+        return new Response(
+          JSON.stringify({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: '❌ Rebase cancelled. You did not type "REBASE" correctly.',
+              flags: 64, // Ephemeral
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      const parts = customId.split(':');
+      const repo = parts[2];
+      const prNumber = parts[3];
+
+      // Execute rebase via GitHub API
+      try {
+        await executeRebase(repo, prNumber);
+
+        return new Response(
+          JSON.stringify({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `✅ Rebase initiated for **${repo}#${prNumber}**`,
+              flags: 64, // Ephemeral
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      } catch (err: any) {
+        console.error('[Discord] Rebase error:', err);
+        return new Response(
+          JSON.stringify({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `❌ Failed to rebase: ${err.message || 'Unknown error'}`,
+              flags: 64, // Ephemeral
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
     return new Response(
       JSON.stringify({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: { content: '✅ Modal submitted successfully!' }
-      }), 
+      }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

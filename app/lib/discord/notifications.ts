@@ -1,14 +1,17 @@
 // lib/discord/notifications.ts
-// Send GitHub webhook notifications to subscribed Discord channels
+// Send GitHub webhook notifications to subscribed Discord channels with rich embeds
 
 import { getRepoSubscriptions } from '../subscriptions';
+import {
+  buildPushEmbed,
+  buildPullRequestEmbed,
+  buildIssueEmbed,
+  buildReleaseEmbed,
+  buildIssueCommentEmbed,
+  DiscordMessage,
+} from './embedBuilder';
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || '';
-
-interface DiscordMessage {
-  content: string;
-  embeds?: any[];
-}
 
 // Track last send time per channel for rate limiting
 const lastSendTime: Map<string, number> = new Map();
@@ -18,7 +21,8 @@ const RATE_LIMIT_DELAY = 1000; // 1 second between messages to same channel
  * Send a GitHub notification to all subscribed channels for a repository
  */
 export async function sendGitHubNotification(
-  message: string,
+  event: string,
+  payload: any,
   repoFullName: string
 ): Promise<void> {
   if (!DISCORD_BOT_TOKEN) {
@@ -31,6 +35,29 @@ export async function sendGitHubNotification(
     return;
   }
 
+  // Build the appropriate embed based on event type
+  let message: DiscordMessage;
+  switch (event) {
+    case 'push':
+      message = buildPushEmbed(payload);
+      break;
+    case 'pull_request':
+      message = buildPullRequestEmbed(payload);
+      break;
+    case 'issues':
+      message = buildIssueEmbed(payload);
+      break;
+    case 'issue_comment':
+      message = buildIssueCommentEmbed(payload);
+      break;
+    case 'release':
+      message = buildReleaseEmbed(payload);
+      break;
+    default:
+      console.log(`[Discord Notifications] Unhandled event type: ${event}`);
+      return;
+  }
+
   try {
     // Get all subscriptions for this repository
     const subscriptions = await getRepoSubscriptions(repoFullName);
@@ -40,7 +67,7 @@ export async function sendGitHubNotification(
       return;
     }
 
-    console.log(`[Discord Notifications] Sending to ${subscriptions.length} channel(s) for ${repoFullName}`);
+    console.log(`[Discord Notifications] Sending ${event} notification to ${subscriptions.length} channel(s) for ${repoFullName}`);
 
     // Send sequentially with delay to avoid rate limits
     for (const sub of subscriptions) {
@@ -48,14 +75,14 @@ export async function sendGitHubNotification(
         // Check rate limit for this channel
         const lastSend = lastSendTime.get(sub.channelId) || 0;
         const timeSinceLastSend = Date.now() - lastSend;
-        
+
         if (timeSinceLastSend < RATE_LIMIT_DELAY) {
           const waitTime = RATE_LIMIT_DELAY - timeSinceLastSend;
           console.log(`[Discord Notifications] Rate limiting: waiting ${waitTime}ms for channel ${sub.channelId}`);
           await sleep(waitTime);
         }
 
-        await sendToChannel(sub.channelId, { content: message });
+        await sendToChannel(sub.channelId, message);
         lastSendTime.set(sub.channelId, Date.now());
         console.log(`[Discord Notifications] Sent to channel ${sub.channelId}`);
       } catch (err) {
@@ -91,9 +118,9 @@ async function sendToChannel(channelId: string, message: DiscordMessage, retries
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After');
       const delayMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 5000;
-      
+
       console.log(`[Discord Notifications] Rate limited, waiting ${delayMs}ms before retry ${attempt}/${retries}`);
-      
+
       if (attempt < retries) {
         await sleep(delayMs);
         continue; // Retry
@@ -120,8 +147,15 @@ function sleep(ms: number): Promise<void> {
  */
 export async function sendTestNotification(channelId: string): Promise<boolean> {
   try {
+    const { EmbedColors } = await import('@/app/types/discord');
     await sendToChannel(channelId, {
-      content: '🧪 **Test Notification**\nThis is a test from Meridus Bot!',
+      content: '',
+      embeds: [{
+        title: '🧪 Test Notification',
+        description: 'This is a test from Meridus Bot!',
+        color: EmbedColors.PRIMARY,
+        timestamp: new Date().toISOString(),
+      }],
     });
     return true;
   } catch (err) {
