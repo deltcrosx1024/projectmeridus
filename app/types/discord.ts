@@ -43,12 +43,14 @@ export interface DiscordEmbedField {
 
 export interface DiscordInteraction {
   id: string;
-  type: number; // 1 = PING, 2 = APPLICATION_COMMAND, 3 = MESSAGE_COMPONENT
+  type: number; // 1 = PING, 2 = APPLICATION_COMMAND, 3 = MESSAGE_COMPONENT, 5 = MODAL_SUBMIT
   data?: {
     name: string;
     options?: DiscordInteractionOption[];
     custom_id?: string;
     component_type?: number;
+    components?: DiscordModalComponent[]; // For modal submits
+    values?: string[]; // For select menus
   };
   member?: {
     user?: {
@@ -68,6 +70,17 @@ export interface DiscordInteraction {
   token: string;
   application_id: string;
   version: number;
+}
+
+export interface DiscordModalComponent {
+  type: number;
+  components: DiscordTextInputComponent[];
+}
+
+export interface DiscordTextInputComponent {
+  type: number;
+  custom_id: string;
+  value: string;
 }
 
 export interface DiscordInteractionOption {

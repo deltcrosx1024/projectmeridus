@@ -54,37 +54,16 @@ export async function POST(request: Request) {
     const payload = JSON.parse(body);
     console.log(`[GitHub Webhook] Event: ${event}, Repo: ${payload.repository?.full_name}`);
 
-    let discordMessage = '';
-
-    // Handle different event types
-    switch (event) {
-      case 'push':
-        discordMessage = formatPushEvent(payload);
-        break;
-
-      case 'pull_request':
-        discordMessage = formatPullRequestEvent(payload);
-        break;
-
-      case 'issues':
-        discordMessage = formatIssuesEvent(payload);
-        break;
-
-      case 'issue_comment':
-        discordMessage = formatIssueCommentEvent(payload);
-        break;
-
-      case 'release':
-        discordMessage = formatReleaseEvent(payload);
-        break;
-
-      default:
-        console.log(`[GitHub Webhook] Unhandled event type: ${event}`);
+    // Only process supported events
+    const supportedEvents = ['push', 'pull_request', 'issues', 'issue_comment', 'release'];
+    if (!supportedEvents.includes(event || '')) {
+      console.log(`[GitHub Webhook] Unhandled event type: ${event}`);
+      return NextResponse.json({ received: true, event, deliveryId, ignored: true }, { status: 200 });
     }
 
-    // Send to subscribed Discord channels
+    // Send to subscribed Discord channels with rich embeds
     const { sendGitHubNotification } = await import('@/app/lib/discord/notifications');
-    await sendGitHubNotification(discordMessage, payload.repository?.full_name);
+    await sendGitHubNotification(event!, payload, payload.repository?.full_name);
 
     return NextResponse.json({ received: true, event, deliveryId }, { status: 200 });
   } catch (err: any) {
