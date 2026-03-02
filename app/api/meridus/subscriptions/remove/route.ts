@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const getBotUrl = (): string => {
-  return process.env.MERIDUS_BOT_URL || 'http://localhost:3000';
-};
-
-const getApiKey = (): string => {
-  return process.env.MERIDUS_API_KEY || '';
-};
+import { removeSubscription } from '@/app/lib/subscriptions';
 
 interface RemoveSubscriptionBody {
   channelId: string;
@@ -14,17 +7,7 @@ interface RemoveSubscriptionBody {
 }
 
 export async function POST(request: Request) {
-  const botUrl = getBotUrl();
-  const apiKey = getApiKey();
-
-  console.log('[MeridusBot] Removing subscription');
-
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'MERIDUS_API_KEY not configured' },
-      { status: 500 }
-    );
-  }
+  console.log('[Subscriptions API] Removing subscription');
 
   try {
     const body: RemoveSubscriptionBody = await request.json();
@@ -33,33 +16,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'channelId is required' }, { status: 400 });
     }
 
-    const forwardBody = {
-      action: 'remove',
-      channelId: body.channelId,
-      repo: body.repo || '',
-    };
+    const removed = await removeSubscription(body.channelId, body.repo);
 
-    console.log('[MeridusBot] Forwarding to bot:', forwardBody);
-
-    const response = await fetch(`${botUrl}/api/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-      body: JSON.stringify(forwardBody),
-    });
-
-    const data = await response.json();
-    console.log('[MeridusBot] Remove subscription response:', data);
-
-    if (response.ok) {
-      return NextResponse.json(data);
-    } else {
-      return NextResponse.json({ error: data.error || 'Failed to remove subscription' }, { status: response.status });
+    if (!removed) {
+      return NextResponse.json(
+        { error: 'Subscription not found' },
+        { status: 404 }
+      );
     }
+
+    console.log('[Subscriptions API] Removed subscription:', { channelId: body.channelId, repo: body.repo });
+
+    return NextResponse.json({ 
+      success: true,
+      message: body.repo 
+        ? `Unsubscribed from ${body.repo}`
+        : 'Unsubscribed from all repositories'
+    });
   } catch (err: any) {
-    console.error('[MeridusBot] Remove subscription error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[Subscriptions API] Remove error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Failed to remove subscription' },
+      { status: 500 }
+    );
   }
 }
