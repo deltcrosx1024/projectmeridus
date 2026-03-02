@@ -41,7 +41,9 @@ export async function linkUser(
     linkedAt: new Date().toISOString(),
   };
   
-  await redis.setex(key, TTL_SECONDS, JSON.stringify(link));
+  const jsonString = JSON.stringify(link);
+  console.log(`[UserLinks] Storing data:`, jsonString.substring(0, 100) + '...');
+  await redis.setex(key, TTL_SECONDS, jsonString);
   console.log(`[UserLinks] Linked Discord user ${discordUserId} to GitHub`);
 }
 
@@ -51,30 +53,40 @@ export async function linkUser(
  */
 export async function getUserLink(discordUserId: string): Promise<UserLink | null> {
   const key = `${KEY_PREFIX}${discordUserId}`;
-  
+
   const data = await redis.get<string>(key);
   if (!data) {
     return null;
   }
-  
+
   try {
-    const parsed = JSON.parse(data) as Omit<UserLink, 'githubToken'> & { githubToken: string };
-    
+    // Handle both string and already-parsed object
+    let parsed: Omit<UserLink, 'githubToken'> & { githubToken: string };
+
+    if (typeof data === 'string') {
+      parsed = JSON.parse(data);
+    } else if (typeof data === 'object') {
+      parsed = data as any;
+    } else {
+      throw new Error(`Unexpected data type: ${typeof data}`);
+    }
+
     // Decrypt the GitHub token
     const decryptedToken = await decryptToken(parsed.githubToken);
-    
+
     // Update last used time
     await redis.setex(key, TTL_SECONDS, JSON.stringify({
       ...parsed,
       lastUsed: new Date().toISOString(),
     }));
-    
+
     return {
       ...parsed,
       githubToken: decryptedToken,
     };
   } catch (error) {
     console.error(`[UserLinks] Failed to parse link for ${discordUserId}:`, error);
+    console.error(`[UserLinks] Raw data:`, data);
     return null;
   }
 }
