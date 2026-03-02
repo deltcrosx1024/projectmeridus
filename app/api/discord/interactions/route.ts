@@ -68,10 +68,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // Get headers for Discord signature verification
+  // Get headers for Discord signature verification (case-insensitive)
   const signature = request.headers.get('x-signature-ed25519') || '';
   const timestamp = request.headers.get('x-signature-timestamp') || '';
-  const body = await request.text();
+
+  // Log headers for debugging (remove in production after fixing)
+  console.log('[Discord] Headers:', {
+    signature: signature ? 'present' : 'missing',
+    timestamp: timestamp ? 'present' : 'missing',
+    publicKey: DISCORD_PUBLIC_KEY ? 'present' : 'missing',
+  });
 
   // Validate public key is configured
   if (!DISCORD_PUBLIC_KEY) {
@@ -85,19 +91,30 @@ export async function POST(request: Request) {
     );
   }
 
+  // Read raw body as bytes for signature verification
+  const bodyBuffer = await request.arrayBuffer();
+  const body = new TextDecoder('utf-8').decode(bodyBuffer);
+
   // Verify Discord signature
-  const isValidRequest = verifyKey(body, signature, timestamp, DISCORD_PUBLIC_KEY);
+  let isValidRequest = false;
+  try {
+    isValidRequest = await verifyKey(body, signature, timestamp, DISCORD_PUBLIC_KEY);
+  } catch (err) {
+    console.error('[Discord] Signature verification error:', err);
+  }
 
   if (!isValidRequest) {
     console.error('[Discord] Invalid signature');
     return new Response(
-      JSON.stringify({ error: 'Invalid signature' }), 
+      JSON.stringify({ error: 'Invalid request signature' }), 
       {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       }
     );
   }
+
+  console.log('[Discord] Signature verified successfully');
 
   // Parse the interaction payload
   const interaction = JSON.parse(body) as DiscordInteraction;
