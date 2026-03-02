@@ -82,46 +82,9 @@ export async function POST(request: Request) {
         console.log(`[GitHub Webhook] Unhandled event type: ${event}`);
     }
 
-    // Send to Discord bot (meridusbot) if configured
-    const meridusBotUrl = getMeridusBotUrl();
-    const meridusApiKey = process.env.MERIDUS_API_KEY;
-    
-    if (meridusBotUrl && meridusApiKey && discordMessage) {
-      try {
-        const botUrl = `${meridusBotUrl}/api/webhooks/github`;
-        const response = await fetch(botUrl, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-github-event': event || '',
-            'x-hub-signature-256': signature || '',
-            'x-api-key': meridusApiKey,
-          },
-          body: JSON.stringify({ 
-            content: discordMessage,
-            event: event,
-            deliveryId: deliveryId,
-            repository: payload.repository,
-            pusher: payload.pusher,
-            commits: payload.commits,
-            pull_request: payload.pull_request,
-            issue: payload.issue,
-            ref: payload.ref,
-            sender: payload.sender,
-          }),
-        });
-        
-        if (!response.ok) {
-          console.error('[GitHub Webhook] Bot returned error:', response.status);
-        } else {
-          console.log('[GitHub Webhook] Forwarded to meridusbot successfully');
-        }
-      } catch (err) {
-        console.error('[Webhook Forward Error to Bot]', err);
-      }
-    } else {
-      console.log('[GitHub Webhook] Bot not configured, skipping forward');
-    }
+    // Send to subscribed Discord channels
+    const { sendGitHubNotification } = await import('@/app/lib/discord/notifications');
+    await sendGitHubNotification(discordMessage, payload.repository?.full_name);
 
     return NextResponse.json({ received: true, event, deliveryId }, { status: 200 });
   } catch (err: any) {
