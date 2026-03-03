@@ -9,6 +9,7 @@ import { Geist_Mono, Aldrich, Archivo } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { SettingsProvider } from "./contexts/SettingsContext";
 import { SWRProvider } from "./components/swr-provider";
 
 const aldrich = Aldrich({
@@ -51,11 +52,13 @@ export default function RootLayout({
         className={`${aldrich.variable} ${archivo.variable} ${geistMono.variable}  antialiased`}
       >
         <AuthProvider>
-          <LanguageProvider>
-            <SWRProvider>
-              {children}
-            </SWRProvider>
-          </LanguageProvider>
+          <SettingsProvider>
+            <LanguageProvider>
+              <SWRProvider>
+                {children}
+              </SWRProvider>
+            </LanguageProvider>
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>

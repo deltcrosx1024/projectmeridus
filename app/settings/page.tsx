@@ -3,26 +3,51 @@
 import Header from '@/app/components/header/Header';
 import Footer from '@/app/components/footer/Footer';
 import { useAuth } from '@/app/contexts/AuthContext';
-import { useState } from 'react';
+import { useSettingsContext } from '@/app/contexts/SettingsContext';
+import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   const { githubUser, discordUser, logout } = useAuth();
+  const { settings, updateSettings, isLoading: settingsLoading } = useSettingsContext();
   const [showGitHubConfirm, setShowGitHubConfirm] = useState(false);
   const [showDiscordConfirm, setShowDiscordConfirm] = useState(false);
   const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
-  
-  // Notification settings
-  const [webhookNotifications, setWebhookNotifications] = useState(true);
-  const [issueAlerts, setIssueAlerts] = useState(true);
-  const [commitNotifications, setCommitNotifications] = useState(false);
-  
-  // Repository preferences
-  const [defaultView, setDefaultView] = useState('grid');
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [refreshInterval, setRefreshInterval] = useState('5');
-  
-  // Appearance
-  const [compactMode, setCompactMode] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Local state for toggles (optimistic UI)
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  // Sync local settings with context when loaded
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  // Debounced save function
+  const handleSettingChange = async (key: string, value: boolean | string | number) => {
+    // Update local state immediately for responsive UI
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
+    setSaveStatus('saving');
+
+    try {
+      await updateSettings({ [key]: value });
+      setSaveStatus('saved');
+      
+      // Reset status after 2 seconds
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+      // Revert local state on error
+      setLocalSettings(settings);
+      
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  };
+
+  const handleClearData = async () => {
+    localStorage.clear();
+    setShowClearDataConfirm(false);
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -30,12 +55,23 @@ export default function SettingsPage() {
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12">
-          <h1 
-            className="text-4xl font-bold text-white mb-2"
-            style={{ fontFamily: 'var(--font-aldrich)' }}
-          >
-            Settings
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 
+              className="text-4xl font-bold text-white mb-2"
+              style={{ fontFamily: 'var(--font-aldrich)' }}
+            >
+              Settings
+            </h1>
+            {saveStatus === 'saving' && (
+              <span className="text-sm text-blue-400">Saving...</span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="text-sm text-green-400">Saved!</span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-sm text-red-400">Error saving</span>
+            )}
+          </div>
           <p className="text-slate-400" style={{ fontFamily: 'var(--font-archivo)' }}>
             Manage your account connections and preferences
           </p>
@@ -196,7 +232,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Notification Preferences */}
+          {/* Notifications */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
             <h2 
               className="text-xl font-bold text-white mb-4"
@@ -215,14 +251,14 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Receive Discord alerts for subscribed events</p>
                 </div>
                 <button
-                  onClick={() => setWebhookNotifications(!webhookNotifications)}
+                  onClick={() => handleSettingChange('webhookNotifications', !localSettings.webhookNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    webhookNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.webhookNotifications ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
                 >
                   <span 
                     className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      webhookNotifications ? 'translate-x-5' : 'translate-x-0'
+                      localSettings.webhookNotifications ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -234,14 +270,14 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Get notified when new issues are created</p>
                 </div>
                 <button
-                  onClick={() => setIssueAlerts(!issueAlerts)}
+                  onClick={() => handleSettingChange('issueAlerts', !localSettings.issueAlerts)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    issueAlerts ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.issueAlerts ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
                 >
                   <span 
                     className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      issueAlerts ? 'translate-x-5' : 'translate-x-0'
+                      localSettings.issueAlerts ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -253,14 +289,14 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Receive updates on new commits</p>
                 </div>
                 <button
-                  onClick={() => setCommitNotifications(!commitNotifications)}
+                  onClick={() => handleSettingChange('commitNotifications', !localSettings.commitNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    commitNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.commitNotifications ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
                 >
                   <span 
                     className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      commitNotifications ? 'translate-x-5' : 'translate-x-0'
+                      localSettings.commitNotifications ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -284,8 +320,8 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Choose how repositories are displayed</p>
                 </div>
                 <select
-                  value={defaultView}
-                  onChange={(e) => setDefaultView(e.target.value)}
+                  value={localSettings.defaultView}
+                  onChange={(e) => handleSettingChange('defaultView', e.target.value)}
                   className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                 >
                   <option value="grid">Grid</option>
@@ -300,35 +336,35 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Automatically refresh repository data</p>
                 </div>
                 <button
-                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  onClick={() => handleSettingChange('autoRefresh', !localSettings.autoRefresh)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
                 >
                   <span 
                     className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      autoRefresh ? 'translate-x-5' : 'translate-x-0'
+                      localSettings.autoRefresh ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
               
-              {autoRefresh && (
+              {localSettings.autoRefresh && (
                 <div className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-white font-medium">Refresh Interval</p>
                     <p className="text-sm text-slate-500">How often to refresh data</p>
                   </div>
                   <select
-                    value={refreshInterval}
-                    onChange={(e) => setRefreshInterval(e.target.value)}
+                    value={localSettings.refreshInterval}
+                    onChange={(e) => handleSettingChange('refreshInterval', parseInt(e.target.value))}
                     className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                   >
-                    <option value="1">1 minute</option>
-                    <option value="5">5 minutes</option>
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 hour</option>
+                    <option value={1}>1 minute</option>
+                    <option value={5}>5 minutes</option>
+                    <option value={15}>15 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={60}>1 hour</option>
                   </select>
                 </div>
               )}
@@ -350,14 +386,14 @@ export default function SettingsPage() {
                 <p className="text-sm text-slate-500">Show more content with less spacing</p>
               </div>
               <button
-                onClick={() => setCompactMode(!compactMode)}
+                onClick={() => handleSettingChange('compactMode', !localSettings.compactMode)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  compactMode ? 'bg-blue-600' : 'bg-slate-600'
+                  localSettings.compactMode ? 'bg-blue-600' : 'bg-slate-600'
                 }`}
               >
                 <span 
                   className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                    compactMode ? 'translate-x-5' : 'translate-x-0'
+                    localSettings.compactMode ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>
@@ -429,11 +465,7 @@ export default function SettingsPage() {
                   <p className="text-white mb-3">Are you sure? This will clear all your cached data and cannot be undone.</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        localStorage.clear();
-                        setShowClearDataConfirm(false);
-                        window.location.reload();
-                      }}
+                      onClick={handleClearData}
                       className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                     >
                       Yes, Clear Everything
