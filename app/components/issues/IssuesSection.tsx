@@ -49,12 +49,12 @@ export default function IssuesSection() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h3 
-                    className="text-base font-semibold text-white group-hover:text-blue-400 transition-colors"
+                    className="text-base font-semibold text-white group-hover:text-blue-400 transition-colors leading-normal"
                     style={{ fontFamily: 'var(--font-aldrich)' }}
                   >
                     #{issue.number} {issue.title}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1" style={{ fontFamily: 'var(--font-archivo)' }}>
+                  <p className="text-xs text-slate-400 mt-1 leading-normal" style={{ fontFamily: 'var(--font-archivo)' }}>
                     {new Date(issue.created_at).toLocaleDateString()}
                   </p>
                 </div>

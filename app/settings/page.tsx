@@ -9,6 +9,20 @@ export default function SettingsPage() {
   const { githubUser, discordUser, logout } = useAuth();
   const [showGitHubConfirm, setShowGitHubConfirm] = useState(false);
   const [showDiscordConfirm, setShowDiscordConfirm] = useState(false);
+  const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
+  
+  // Notification settings
+  const [webhookNotifications, setWebhookNotifications] = useState(true);
+  const [issueAlerts, setIssueAlerts] = useState(true);
+  const [commitNotifications, setCommitNotifications] = useState(false);
+  
+  // Repository preferences
+  const [defaultView, setDefaultView] = useState('grid');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState('5');
+  
+  // Appearance
+  const [compactMode, setCompactMode] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -27,8 +41,8 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* Connected Services */}
         <div className="space-y-6">
+          {/* Connected Services */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
             <h2 
               className="text-xl font-bold text-white mb-6"
@@ -182,7 +196,175 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* API Keys Section */}
+          {/* Notification Preferences */}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+            <h2 
+              className="text-xl font-bold text-white mb-4"
+              style={{ fontFamily: 'var(--font-aldrich)' }}
+            >
+              Notifications
+            </h2>
+            <p className="text-slate-400 mb-4" style={{ fontFamily: 'var(--font-archivo)' }}>
+              Configure how you receive updates from your repositories
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+                <div>
+                  <p className="text-white font-medium">Webhook Notifications</p>
+                  <p className="text-sm text-slate-500">Receive Discord alerts for subscribed events</p>
+                </div>
+                <button
+                  onClick={() => setWebhookNotifications(!webhookNotifications)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    webhookNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}
+                >
+                  <span 
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      webhookNotifications ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+                <div>
+                  <p className="text-white font-medium">Issue Alerts</p>
+                  <p className="text-sm text-slate-500">Get notified when new issues are created</p>
+                </div>
+                <button
+                  onClick={() => setIssueAlerts(!issueAlerts)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    issueAlerts ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}
+                >
+                  <span 
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      issueAlerts ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-white font-medium">Commit Notifications</p>
+                  <p className="text-sm text-slate-500">Receive updates on new commits</p>
+                </div>
+                <button
+                  onClick={() => setCommitNotifications(!commitNotifications)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    commitNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}
+                >
+                  <span 
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      commitNotifications ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Repository Preferences */}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+            <h2 
+              className="text-xl font-bold text-white mb-4"
+              style={{ fontFamily: 'var(--font-aldrich)' }}
+            >
+              Repository Preferences
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+                <div>
+                  <p className="text-white font-medium">Default View</p>
+                  <p className="text-sm text-slate-500">Choose how repositories are displayed</p>
+                </div>
+                <select
+                  value={defaultView}
+                  onChange={(e) => setDefaultView(e.target.value)}
+                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="grid">Grid</option>
+                  <option value="list">List</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+                <div>
+                  <p className="text-white font-medium">Auto Refresh</p>
+                  <p className="text-sm text-slate-500">Automatically refresh repository data</p>
+                </div>
+                <button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
+                  }`}
+                >
+                  <span 
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      autoRefresh ? 'translate-x-7' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {autoRefresh && (
+                <div className="flex items-center justify-between py-3">
+                  <div>
+                    <p className="text-white font-medium">Refresh Interval</p>
+                    <p className="text-sm text-slate-500">How often to refresh data</p>
+                  </div>
+                  <select
+                    value={refreshInterval}
+                    onChange={(e) => setRefreshInterval(e.target.value)}
+                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="1">1 minute</option>
+                    <option value="5">5 minutes</option>
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Appearance */}
+          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+            <h2 
+              className="text-xl font-bold text-white mb-4"
+              style={{ fontFamily: 'var(--font-aldrich)' }}
+            >
+              Appearance
+            </h2>
+            
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-white font-medium">Compact Mode</p>
+                <p className="text-sm text-slate-500">Show more content with less spacing</p>
+              </div>
+              <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  compactMode ? 'bg-blue-600' : 'bg-slate-600'
+                }`}
+              >
+                <span 
+                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                    compactMode ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* API Access */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
             <h2 
               className="text-xl font-bold text-white mb-4"
@@ -194,14 +376,77 @@ export default function SettingsPage() {
               Your API keys are securely stored and used for authenticated requests only.
             </p>
             <div className="space-y-3 text-sm">
-              <div className="p-3 bg-slate-700/50 rounded">
-                <p className="text-slate-500">GitHub API - Token</p>
-                <p className="text-slate-400 mt-1">Stored securely in httpOnly cookie</p>
+              <div className="p-3 bg-slate-700/50 rounded flex items-center justify-between">
+                <div>
+                  <p className="text-slate-300 font-medium">GitHub API</p>
+                  <p className="text-slate-500 text-xs">Token stored securely in httpOnly cookie</p>
+                </div>
+                {githubUser ? (
+                  <span className="text-green-400 text-xs px-2 py-1 bg-green-900/30 rounded">Active</span>
+                ) : (
+                  <span className="text-slate-500 text-xs px-2 py-1 bg-slate-700 rounded">Not Connected</span>
+                )}
               </div>
-              <div className="p-3 bg-slate-700/50 rounded">
-                <p className="text-slate-500">Discord API - Token</p>
-                <p className="text-slate-400 mt-1">Stored securely in httpOnly cookie</p>
+              <div className="p-3 bg-slate-700/50 rounded flex items-center justify-between">
+                <div>
+                  <p className="text-slate-300 font-medium">Discord API</p>
+                  <p className="text-slate-500 text-xs">Token stored securely in httpOnly cookie</p>
+                </div>
+                {discordUser ? (
+                  <span className="text-green-400 text-xs px-2 py-1 bg-green-900/30 rounded">Active</span>
+                ) : (
+                  <span className="text-slate-500 text-xs px-2 py-1 bg-slate-700 rounded">Not Connected</span>
+                )}
               </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-red-900/10 border border-red-900/30 rounded-lg p-6">
+            <h2 
+              className="text-xl font-bold text-red-400 mb-4"
+              style={{ fontFamily: 'var(--font-aldrich)' }}
+            >
+              Danger Zone
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-white font-medium">Clear All Data</p>
+                  <p className="text-sm text-slate-500">Remove all cached repository data and preferences</p>
+                </div>
+                <button
+                  onClick={() => setShowClearDataConfirm(true)}
+                  className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors"
+                >
+                  Clear Data
+                </button>
+              </div>
+              
+              {showClearDataConfirm && (
+                <div className="p-4 bg-red-900/30 border border-red-900/50 rounded-lg">
+                  <p className="text-white mb-3">Are you sure? This will clear all your cached data and cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        localStorage.clear();
+                        setShowClearDataConfirm(false);
+                        window.location.reload();
+                      }}
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                    >
+                      Yes, Clear Everything
+                    </button>
+                    <button
+                      onClick={() => setShowClearDataConfirm(false)}
+                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
