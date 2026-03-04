@@ -10,6 +10,7 @@ interface GitHubRepo {
   language: string;
   stars: number;
   forks: number;
+  updated_at: string;
 }
 
 interface GitHubIssue {
@@ -70,6 +71,7 @@ export function useGitHubRepos() {
           language: repo.language || 'Unknown',
           stars: repo.stargazers_count,
           forks: repo.forks_count,
+          updated_at: repo.updated_at || repo.pushed_at || new Date().toISOString(),
         }));
         
         setRepos(formatted.slice(0, 6)); // Limit to 6 repos

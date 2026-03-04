@@ -4,6 +4,7 @@ import Header from '@/app/components/header/Header';
 import Footer from '@/app/components/footer/Footer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useGitHubRepos, useGitHubIssues } from '@/app/lib/useGitHub';
+import ContributionGraph from '@/app/components/contributions/ContributionGraph';
 
 export default function InsightsPage() {
   const { githubUser } = useAuth();
@@ -43,6 +44,9 @@ export default function InsightsPage() {
             Your GitHub activity overview
           </p>
         </div>
+
+        {/* Contribution Graph & Language Breakdown */}
+        <ContributionGraph />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">

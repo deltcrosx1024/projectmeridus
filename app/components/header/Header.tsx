@@ -15,6 +15,7 @@ import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useState } from 'react';
 import Link from 'next/link';
+import NotificationCenter from '@/app/components/notifications/NotificationCenter';
 
 export default function Header() {
   const { githubUser, discordUser, logout, isLoading } = useAuth();
@@ -51,6 +52,11 @@ export default function Header() {
               );
             })}
           </nav>
+
+          {/* ===== NOTIFICATION CENTER ===== */}
+          <div className="hidden md:flex items-center">
+            <NotificationCenter />
+          </div>
 
           {/* ===== DESKTOP AUTH BUTTONS ===== */}
           <div className="hidden md:flex items-center gap-3">
