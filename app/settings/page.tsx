@@ -5,6 +5,14 @@ import Footer from '@/app/components/footer/Footer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useSettingsContext } from '@/app/contexts/SettingsContext';
 import { useState, useEffect } from 'react';
+import { UserSettings } from '@/app/lib/settings';
+import DataExport from '@/app/components/export/DataExport';
+
+interface PendingChanges {
+  notifications: Partial<Pick<UserSettings, 'webhookNotifications' | 'issueAlerts' | 'commitNotifications'>>;
+  repository: Partial<Pick<UserSettings, 'defaultView' | 'autoRefresh' | 'refreshInterval'>>;
+  appearance: Partial<Pick<UserSettings, 'compactMode'>>;
+}
 
 export default function SettingsPage() {
   const { githubUser, discordUser, logout } = useAuth();
@@ -12,35 +20,80 @@ export default function SettingsPage() {
   const [showGitHubConfirm, setShowGitHubConfirm] = useState(false);
   const [showDiscordConfirm, setShowDiscordConfirm] = useState(false);
   const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  
+  // Local state mirrors settings
+  const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  
+  // Track which sections have unsaved changes
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
+    notifications: {},
+    repository: {},
+    appearance: {},
+  });
+  
+  // Track save status per section
+  const [saveStatus, setSaveStatus] = useState<{
+    notifications: 'idle' | 'saving' | 'saved';
+    repository: 'idle' | 'saving' | 'saved';
+    appearance: 'idle' | 'saving' | 'saved';
+  }>({
+    notifications: 'idle',
+    repository: 'idle',
+    appearance: 'idle',
+  });
 
-  // Local state for toggles (optimistic UI)
-  const [localSettings, setLocalSettings] = useState(settings);
-
-  // Sync local settings with context when loaded
+  // Sync local settings when context updates
   useEffect(() => {
     setLocalSettings(settings);
+    setPendingChanges({ notifications: {}, repository: {}, appearance: {} });
   }, [settings]);
 
-  // Debounced save function
-  const handleSettingChange = async (key: string, value: boolean | string | number) => {
-    // Update local state immediately for responsive UI
+  const hasNotificationChanges = Object.keys(pendingChanges.notifications).length > 0;
+  const hasRepositoryChanges = Object.keys(pendingChanges.repository).length > 0;
+  const hasAppearanceChanges = Object.keys(pendingChanges.appearance).length > 0;
+
+  const handleLocalChange = (
+    section: keyof PendingChanges,
+    key: string,
+    value: boolean | string | number
+  ) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
-    setSaveStatus('saving');
+    setPendingChanges(prev => ({
+      ...prev,
+      [section]: { ...prev[section], [key]: value },
+    }));
+  };
+
+  const applyChanges = async (section: keyof PendingChanges) => {
+    const changes = pendingChanges[section];
+    if (Object.keys(changes).length === 0) return;
+
+    setSaveStatus(prev => ({ ...prev, [section]: 'saving' }));
 
     try {
-      await updateSettings({ [key]: value });
-      setSaveStatus('saved');
+      await updateSettings(changes);
+      setSaveStatus(prev => ({ ...prev, [section]: 'saved' }));
       
-      // Reset status after 2 seconds
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      // Clear pending changes for this section
+      setPendingChanges(prev => ({ ...prev, [section]: {} }));
+      
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
+      }, 2000);
     } catch {
-      setSaveStatus('error');
-      // Revert local state on error
+      setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
+      // Revert local changes on error
       setLocalSettings(settings);
-      
-      setTimeout(() => setSaveStatus('idle'), 2000);
     }
+  };
+
+  const resetChanges = (section: keyof PendingChanges) => {
+    const keys = Object.keys(pendingChanges[section]) as (keyof UserSettings)[];
+    setLocalSettings(prev => ({
+      ...prev,
+      ...keys.reduce((acc, key) => ({ ...acc, [key]: settings[key] }), {}),
+    }));
+    setPendingChanges(prev => ({ ...prev, [section]: {} }));
   };
 
   const handleClearData = async () => {
@@ -49,29 +102,25 @@ export default function SettingsPage() {
     window.location.reload();
   };
 
+  const getSectionStatus = (section: keyof PendingChanges) => {
+    const status = saveStatus[section];
+    if (status === 'saving') return <span className="text-sm text-blue-400">Saving...</span>;
+    if (status === 'saved') return <span className="text-sm text-green-400">Saved!</span>;
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <Header />
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12">
-          <div className="flex items-center justify-between">
-            <h1 
-              className="text-4xl font-bold text-white mb-2"
-              style={{ fontFamily: 'var(--font-aldrich)' }}
-            >
-              Settings
-            </h1>
-            {saveStatus === 'saving' && (
-              <span className="text-sm text-blue-400">Saving...</span>
-            )}
-            {saveStatus === 'saved' && (
-              <span className="text-sm text-green-400">Saved!</span>
-            )}
-            {saveStatus === 'error' && (
-              <span className="text-sm text-red-400">Error saving</span>
-            )}
-          </div>
+          <h1 
+            className="text-4xl font-bold text-white mb-2"
+            style={{ fontFamily: 'var(--font-aldrich)' }}
+          >
+            Settings
+          </h1>
           <p className="text-slate-400" style={{ fontFamily: 'var(--font-archivo)' }}>
             Manage your account connections and preferences
           </p>
@@ -234,15 +283,36 @@ export default function SettingsPage() {
 
           {/* Notifications */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
-            <h2 
-              className="text-xl font-bold text-white mb-4"
-              style={{ fontFamily: 'var(--font-aldrich)' }}
-            >
-              Notifications
-            </h2>
-            <p className="text-slate-400 mb-4" style={{ fontFamily: 'var(--font-archivo)' }}>
-              Configure how you receive updates from your repositories
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 
+                  className="text-xl font-bold text-white"
+                  style={{ fontFamily: 'var(--font-aldrich)' }}
+                >
+                  Notifications
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Configure how you receive updates</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {getSectionStatus('notifications')}
+                {hasNotificationChanges && (
+                  <>
+                    <button
+                      onClick={() => resetChanges('notifications')}
+                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => applyChanges('notifications')}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Apply Changes
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
@@ -251,7 +321,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Receive Discord alerts for subscribed events</p>
                 </div>
                 <button
-                  onClick={() => handleSettingChange('webhookNotifications', !localSettings.webhookNotifications)}
+                  onClick={() => handleLocalChange('notifications', 'webhookNotifications', !localSettings.webhookNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     localSettings.webhookNotifications ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
@@ -270,7 +340,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Get notified when new issues are created</p>
                 </div>
                 <button
-                  onClick={() => handleSettingChange('issueAlerts', !localSettings.issueAlerts)}
+                  onClick={() => handleLocalChange('notifications', 'issueAlerts', !localSettings.issueAlerts)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     localSettings.issueAlerts ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
@@ -289,7 +359,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Receive updates on new commits</p>
                 </div>
                 <button
-                  onClick={() => handleSettingChange('commitNotifications', !localSettings.commitNotifications)}
+                  onClick={() => handleLocalChange('notifications', 'commitNotifications', !localSettings.commitNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     localSettings.commitNotifications ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
@@ -306,12 +376,36 @@ export default function SettingsPage() {
 
           {/* Repository Preferences */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
-            <h2 
-              className="text-xl font-bold text-white mb-4"
-              style={{ fontFamily: 'var(--font-aldrich)' }}
-            >
-              Repository Preferences
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 
+                  className="text-xl font-bold text-white"
+                  style={{ fontFamily: 'var(--font-aldrich)' }}
+                >
+                  Repository Preferences
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Customize how repositories are displayed</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {getSectionStatus('repository')}
+                {hasRepositoryChanges && (
+                  <>
+                    <button
+                      onClick={() => resetChanges('repository')}
+                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => applyChanges('repository')}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Apply Changes
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
@@ -321,7 +415,7 @@ export default function SettingsPage() {
                 </div>
                 <select
                   value={localSettings.defaultView}
-                  onChange={(e) => handleSettingChange('defaultView', e.target.value)}
+                  onChange={(e) => handleLocalChange('repository', 'defaultView', e.target.value)}
                   className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                 >
                   <option value="grid">Grid</option>
@@ -336,7 +430,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-slate-500">Automatically refresh repository data</p>
                 </div>
                 <button
-                  onClick={() => handleSettingChange('autoRefresh', !localSettings.autoRefresh)}
+                  onClick={() => handleLocalChange('repository', 'autoRefresh', !localSettings.autoRefresh)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     localSettings.autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
                   }`}
@@ -357,7 +451,7 @@ export default function SettingsPage() {
                   </div>
                   <select
                     value={localSettings.refreshInterval}
-                    onChange={(e) => handleSettingChange('refreshInterval', parseInt(e.target.value))}
+                    onChange={(e) => handleLocalChange('repository', 'refreshInterval', parseInt(e.target.value))}
                     className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value={1}>1 minute</option>
@@ -373,20 +467,67 @@ export default function SettingsPage() {
 
           {/* Appearance */}
           <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
-            <h2 
-              className="text-xl font-bold text-white mb-4"
-              style={{ fontFamily: 'var(--font-aldrich)' }}
-            >
-              Appearance
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 
+                  className="text-xl font-bold text-white"
+                  style={{ fontFamily: 'var(--font-aldrich)' }}
+                >
+                  Appearance
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Customize the look and feel</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {getSectionStatus('appearance')}
+                {hasAppearanceChanges && (
+                  <>
+                    <button
+                      onClick={() => resetChanges('appearance')}
+                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => applyChanges('appearance')}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Apply Changes
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
             
+            {/* Theme Selector */}
+            <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+              <div>
+                <p className="text-white font-medium">Theme</p>
+                <p className="text-sm text-slate-500">Choose your preferred color scheme</p>
+              </div>
+              <div className="flex bg-slate-700 rounded-lg p-1">
+                {(['dark', 'light', 'system'] as const).map((themeOption) => (
+                  <button
+                    key={themeOption}
+                    onClick={() => handleLocalChange('appearance', 'theme', themeOption)}
+                    className={`px-3 py-1.5 text-sm rounded-md capitalize transition-colors ${
+                      localSettings.theme === themeOption
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {themeOption}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="text-white font-medium">Compact Mode</p>
                 <p className="text-sm text-slate-500">Show more content with less spacing</p>
               </div>
               <button
-                onClick={() => handleSettingChange('compactMode', !localSettings.compactMode)}
+                onClick={() => handleLocalChange('appearance', 'compactMode', !localSettings.compactMode)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
                   localSettings.compactMode ? 'bg-blue-600' : 'bg-slate-600'
                 }`}
@@ -436,6 +577,9 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Data Export */}
+          <DataExport />
 
           {/* Danger Zone */}
           <div className="bg-red-900/10 border border-red-900/30 rounded-lg p-6">

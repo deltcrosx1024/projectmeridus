@@ -11,14 +11,16 @@ export interface UserSettings {
   webhookNotifications: boolean;
   issueAlerts: boolean;
   commitNotifications: boolean;
-  
+
   // Repository preferences
   defaultView: 'grid' | 'list' | 'compact';
   autoRefresh: boolean;
   refreshInterval: number; // in minutes
-  
+  pinnedRepos: number[]; // Array of repo IDs
+
   // Appearance
   compactMode: boolean;
+  theme: 'dark' | 'light' | 'system';
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -28,7 +30,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   defaultView: 'grid',
   autoRefresh: true,
   refreshInterval: 5,
+  pinnedRepos: [],
   compactMode: false,
+  theme: 'dark',
 };
 
 function getSettingsKey(userId: string): string {

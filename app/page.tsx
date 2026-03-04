@@ -20,6 +20,8 @@ import CTASection from '@/app/components/cta/CTASection';
 import Footer from '@/app/components/footer/Footer';
 import ReposSection from '@/app/components/repos/ReposSection';
 import IssuesSection from '@/app/components/issues/IssuesSection';
+import PullRequestsSection from '@/app/components/pull-requests/PullRequestsSection';
+import ActivityFeed from '@/app/components/activity/ActivityFeed';
 import { Analytics } from '@vercel/analytics/next';
 
 export default function Home() {
@@ -43,8 +45,14 @@ export default function Home() {
         {/* ===== GITHUB REPOS SECTION ===== */}
         <ReposSection />
 
+        {/* ===== PULL REQUESTS SECTION ===== */}
+        <PullRequestsSection />
+
         {/* ===== RECENT ISSUES SECTION ===== */}
         <IssuesSection />
+
+        {/* ===== ACTIVITY FEED SECTION ===== */}
+        <ActivityFeed />
 
         {/* ===== CTA SECTION COMPONENT ===== */}
         <CTASection />

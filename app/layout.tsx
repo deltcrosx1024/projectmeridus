@@ -10,7 +10,11 @@ import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { SWRProvider } from "./components/swr-provider";
+import CommandPaletteWrapper from "./components/command-palette/CommandPaletteWrapper";
+import ToastContainer from "./components/toast/ToastContainer";
+import MobileNav from "./components/mobile-nav/MobileNav";
 
 const aldrich = Aldrich({
   weight: "400",
@@ -53,11 +57,16 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SettingsProvider>
-            <LanguageProvider>
-              <SWRProvider>
+            <ThemeProvider>
+              <LanguageProvider>
+                <SWRProvider>
                 {children}
-              </SWRProvider>
-            </LanguageProvider>
+                <CommandPaletteWrapper />
+                <ToastContainer />
+                <MobileNav />
+                </SWRProvider>
+              </LanguageProvider>
+            </ThemeProvider>
           </SettingsProvider>
         </AuthProvider>
       </body>
