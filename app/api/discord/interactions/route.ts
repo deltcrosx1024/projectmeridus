@@ -5,6 +5,7 @@ import {
   InteractionType, 
   InteractionResponseType 
 } from '@/app/types/discord';
+import { handleAutocomplete as handleAutocompleteLogic } from '@/app/lib/discord/autocomplete';
 
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
 
@@ -246,10 +247,11 @@ function handleMessageComponent(interaction: DiscordInteraction): Response {
   return createErrorResponse(`✅ You clicked: **${customId}**`);
 }
 
-function handleAutocomplete(): Response {
+async function handleAutocomplete(interaction: DiscordInteraction): Promise<Response> {
+  const choices = await handleAutocompleteLogic(interaction);
   return createResponse({
     type: InteractionResponseType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-    data: { choices: [] },
+    data: { choices },
   });
 }
 
@@ -304,7 +306,7 @@ async function dispatchInteraction(interaction: DiscordInteraction): Promise<Res
     case InteractionType.MESSAGE_COMPONENT:
       return handleMessageComponent(interaction);
     case InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
-      return handleAutocomplete();
+      return handleAutocomplete(interaction);
     case InteractionType.MODAL_SUBMIT:
       return handleModalSubmit(interaction);
     default:
