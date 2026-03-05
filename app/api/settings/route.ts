@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSettings, saveUserSettings, UserSettings } from '@/app/lib/settings';
+import { getUserSettings, saveUserSettings } from '@/app/lib/settings';
 
 // GET /api/settings - Get user settings
 export async function GET(request: NextRequest) {
