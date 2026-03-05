@@ -1,5 +1,5 @@
 // lib/discord/commands.ts
-// Discord bot command handlers for interaction endpoint
+// Discord bot command handlers with QoL features
 
 import { 
   DiscordCommand, 
@@ -13,29 +13,55 @@ import {
   addSubscription, 
   removeSubscription, 
   getAllSubscriptions, 
-  getSubscriptionCount 
+  getSubscriptionCount,
+  getRepoSubscriptions
 } from "@/app/lib/subscriptions";
 import { getUserLink, hasLinkedGitHub } from "@/app/lib/userLinks";
 import { Octokit } from "octokit";
+import { 
+  checkCooldown, 
+  setCooldown, 
+  formatCooldownMessage 
+} from "./cooldowns";
+import { 
+  checkPermission, 
+  getPermissionErrorMessage,
+  PermissionLevel
+} from "./permissions";
+import { formatErrorMessage, findSimilarRepos, isValidRepoFormat } from "./errorHandler";
+import {
+  getUserPreferences,
+  toggleDMNotifications,
+  setDMEventTypes,
+  setDigestMode,
+  setSilentMode,
+  isInSilentMode,
+  muteRepository,
+  unmuteRepository,
+  addNotificationFilter,
+  removeNotificationFilter,
+  setGitHubUsername
+} from "./userPreferences";
+import { 
+  storePaginationState, 
+  generatePaginationButtons,
+  getPaginatedSlice,
+  formatPaginationFooter
+} from "./pagination";
 
-// Environment configuration - fallback server token
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || '';
 
-// Get Octokit for a Discord user (using their linked GitHub token)
+// Get Octokit for a Discord user
 async function getUserOctokit(interaction: DiscordInteraction): Promise<Octokit | null> {
   const discordUserId = interaction.member?.user?.id || interaction.user?.id;
+  if (!discordUserId) return null;
   
-  if (!discordUserId) {
-    return null;
-  }
-  
-  // Try to get the user's linked GitHub token
   const userLink = await getUserLink(discordUserId);
   if (userLink) {
     return new Octokit({ auth: userLink.githubToken });
   }
   
-  // Fallback to server token if available
   if (GITHUB_TOKEN) {
     return new Octokit({ auth: GITHUB_TOKEN });
   }
@@ -43,7 +69,7 @@ async function getUserOctokit(interaction: DiscordInteraction): Promise<Octokit 
   return null;
 }
 
-// Check if user has GitHub access
+// Check GitHub access with enhanced error messages
 async function checkGitHubAccess(interaction: DiscordInteraction): Promise<{ ok: boolean; message?: string }> {
   const discordUserId = interaction.member?.user?.id || interaction.user?.id;
   
@@ -55,21 +81,34 @@ async function checkGitHubAccess(interaction: DiscordInteraction): Promise<{ ok:
   if (!hasLink && !GITHUB_TOKEN) {
     return { 
       ok: false, 
-      message: '🔒 **GitHub not linked.**\n\nPlease log in to the website with both GitHub and Discord:\n' +
-        '🔗 <https://www.meridusdev.in.th>' 
+      message: '🔒 **GitHub not linked.**\n\nPlease log in to the website with both GitHub and Discord:\n🔗 <https://www.meridusdev.in.th>' 
     };
   }
   
   return { ok: true };
 }
 
-// Command registry
+// Get Discord user ID
+function getUserId(interaction: DiscordInteraction): string | undefined {
+  return interaction.member?.user?.id || interaction.user?.id;
+}
+
+// Command registry with QoL features
 export const commands: Record<string, DiscordCommand> = {
-  // 1. Ping - Simple health check
+  // 1. Ping - with cooldown check
   ping: {
     name: 'ping',
     description: 'Check if the bot is online and responsive',
-    execute: async () => {
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'ping');
+        if (remaining > 0) {
+          return { content: formatCooldownMessage(remaining), ephemeral: true };
+        }
+        setCooldown(userId, 'ping');
+      }
+      
       const latency = Date.now();
       return {
         content: `🏓 Pong! Bot is online.\n⏱️ Latency: ${Date.now() - latency}ms`,
@@ -77,7 +116,7 @@ export const commands: Record<string, DiscordCommand> = {
     }
   },
 
-  // 2. Status - Bot status with uptime and stats
+  // 2. Status - enhanced with more stats
   status: {
     name: 'status',
     description: 'Show bot status, uptime, and system information',
@@ -86,13 +125,7 @@ export const commands: Record<string, DiscordCommand> = {
       const days = Math.floor(uptimeSeconds / 86400);
       const hours = Math.floor((uptimeSeconds % 86400) / 3600);
       const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-      const seconds = uptimeSeconds % 60;
       
-      const uptimeStr = days > 0 
-        ? `${days}d ${hours}h ${minutes}m ${seconds}s`
-        : `${hours}h ${minutes}m ${seconds}s`;
-      
-      // Get subscription count directly from storage
       const subscriptionCount = await getSubscriptionCount();
       
       const embed: DiscordEmbed = {
@@ -100,25 +133,13 @@ export const commands: Record<string, DiscordCommand> = {
         description: 'Real-time system status and statistics',
         color: EmbedColors.SUCCESS,
         fields: [
-          {
-            name: '🔵 Status',
-            value: 'Online',
-            inline: true
-          },
-          {
-            name: '⏱️ Uptime',
-            value: uptimeStr,
-            inline: true
-          },
-          {
-            name: '📡 Subscriptions',
-            value: subscriptionCount.toString(),
-            inline: true
-          },
+          { name: '🔵 Status', value: 'Online ✅', inline: true },
+          { name: '⏱️ Uptime', value: `${days}d ${hours}h ${minutes}m`, inline: true },
+          { name: '📡 Subscriptions', value: subscriptionCount.toString(), inline: true },
+          { name: '🤖 Bot Version', value: '2.0.0', inline: true },
+          { name: '📅 Last Restart', value: new Date(Date.now() - uptimeSeconds * 1000).toLocaleDateString(), inline: true },
         ],
-        footer: {
-          text: 'DeltCroX DevHub • Development Hub and Productivity Tools'
-        },
+        footer: { text: 'DeltCroX DevHub' },
         timestamp: new Date().toISOString()
       };
       
@@ -126,10 +147,82 @@ export const commands: Record<string, DiscordCommand> = {
     }
   },
 
-  // 3. Subscribe - Subscribe channel to GitHub repo events
+  // 3. Help - enhanced with command details
+  help: {
+    name: 'help',
+    description: 'Show help information for commands',
+    options: [
+      {
+        name: 'command',
+        description: 'Get detailed help for a specific command',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'ping', value: 'ping' },
+          { name: 'status', value: 'status' },
+          { name: 'repos', value: 'repos' },
+          { name: 'issues', value: 'issues' },
+          { name: 'commits', value: 'commits' },
+          { name: 'subscribe', value: 'subscribe' },
+          { name: 'unsubscribe', value: 'unsubscribe' },
+          { name: 'list', value: 'list' },
+          { name: 'search', value: 'search' },
+          { name: 'settings', value: 'settings' },
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const args = parseOptions(interaction);
+      const cmd = args.command as string;
+      
+      if (cmd && commands[cmd]) {
+        const command = commands[cmd];
+        const embed: DiscordEmbed = {
+          title: `📖 /${cmd} - Help`,
+          description: command.description,
+          color: EmbedColors.INFO,
+          fields: []
+        };
+        
+        if (command.options && command.options.length > 0) {
+          embed.fields = command.options.map(opt => ({
+            name: `${opt.name} ${opt.required ? '(required)' : '(optional)'}`,
+            value: opt.description,
+            inline: false
+          }));
+        }
+        
+        embed.fields?.push({
+          name: '💡 Example',
+          value: `\`/${cmd}${command.options?.filter(o => o.required).map(o => ` <${o.name}>`).join('') || ''}\``,
+          inline: false
+        });
+        
+        return { embeds: [embed] };
+      }
+      
+      // General help
+      const embed: DiscordEmbed = {
+        title: '📚 Meridus Bot Commands',
+        description: 'Here are all available commands:\n\nUse `/help command:<name>` for detailed info.',
+        color: EmbedColors.PRIMARY,
+        fields: [
+          { name: 'ℹ️ General', value: '`/ping`, `/status`, `/help`', inline: false },
+          { name: '📁 GitHub', value: '`/repos`, `/issues`, `/commits`, `/search`', inline: false },
+          { name: '🔔 Subscriptions', value: '`/subscribe`, `/unsubscribe`, `/list`', inline: false },
+          { name: '⚙️ Settings', value: '`/settings`, `/mystats`', inline: false },
+        ],
+        footer: { text: 'DeltCroX DevHub' }
+      };
+      
+      return { embeds: [embed] };
+    }
+  },
+
+  // 4. Subscribe - with bulk support and autocomplete
   subscribe: {
     name: 'subscribe',
-    description: 'Subscribe a channel to GitHub repository events',
+    description: 'Subscribe channel(s) to GitHub repository events (Admin only)',
     options: [
       {
         name: 'channel',
@@ -139,67 +232,68 @@ export const commands: Record<string, DiscordCommand> = {
       },
       {
         name: 'repo',
-        description: 'GitHub repository in format owner/repo (e.g., deltcrosx1024/projectmeridus)',
+        description: 'Repository(s) in format owner/repo (comma-separated for multiple)',
         type: 3, // STRING
-        required: true
+        required: true,
+        autocomplete: true
       },
       {
         name: 'events',
         description: 'Events to subscribe to (default: push,issues,pr,release)',
         type: 3, // STRING
-        required: false
+        required: false,
+        autocomplete: true
       }
     ],
-    execute: async (interaction: DiscordInteraction) => {
+    execute: async (interaction) => {
+      // Check permissions
+      const permCheck = checkPermission(interaction, 'subscribe');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('subscribe', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
       const args = parseOptions(interaction);
       const channelId = args.channel as string;
-      const repo = args.repo as string;
+      const reposInput = args.repo as string;
       const eventsStr = (args.events as string) || 'push,issues,pull_request,release';
-      
-      // Validate repo format
-      if (!repo.includes('/')) {
-        return {
-          content: '❌ Invalid repository format. Use: `owner/repo` (e.g., `deltcrosx1024/projectmeridus`)'
-        };
-      }
-      
       const events = eventsStr.split(',').map(e => e.trim()).filter(e => e);
       
-      try {
-        await addSubscription(channelId, repo, events, interaction.guild_id);
+      // Support bulk subscribe with comma-separated repos
+      const repos = reposInput.split(',').map(r => r.trim()).filter(r => r);
+      const results: string[] = [];
+      
+      for (const repo of repos) {
+        if (!isValidRepoFormat(repo)) {
+          results.push(`❌ **${repo}**: Invalid format. Use: owner/repo`);
+          continue;
+        }
         
-        const embed: DiscordEmbed = {
-          title: '✅ Subscription Added',
-          description: `This channel will now receive notifications for **${repo}**`,
-          color: EmbedColors.SUCCESS,
-          fields: [
-            {
-              name: '📁 Repository',
-              value: repo,
-              inline: true
-            },
-            {
-              name: '🔔 Events',
-              value: events.join(', '),
-              inline: true
-            }
-          ]
-        };
-        
-        return { embeds: [embed] };
-      } catch (err: any) {
-        console.error('[Subscribe] Error:', err);
-        return {
-          content: `❌ Failed to subscribe: ${err.message || 'Unknown error'}`,
-        };
+        try {
+          await addSubscription(channelId, repo, events, interaction.guild_id);
+          results.push(`✅ **${repo}**: Subscribed`);
+        } catch (err: any) {
+          results.push(`❌ **${repo}**: ${err.message}`);
+        }
       }
+      
+      const embed: DiscordEmbed = {
+        title: `📋 Subscription Results (${repos.length} repos)`,
+        description: results.join('\n'),
+        color: EmbedColors.SUCCESS,
+        fields: [
+          { name: '📺 Channel', value: `<#${channelId}>`, inline: true },
+          { name: '🔔 Events', value: events.join(', '), inline: true }
+        ]
+      };
+      
+      return { embeds: [embed] };
     }
   },
 
-  // 4. Unsubscribe - Unsubscribe from repo events
+  // 5. Unsubscribe - with confirmation modal support
   unsubscribe: {
     name: 'unsubscribe',
-    description: 'Unsubscribe a channel from GitHub repository events',
+    description: 'Unsubscribe channel(s) from GitHub repository events (Admin only)',
     options: [
       {
         name: 'channel',
@@ -209,15 +303,36 @@ export const commands: Record<string, DiscordCommand> = {
       },
       {
         name: 'repo',
-        description: 'Repository to unsubscribe from (leave empty to unsubscribe all)',
+        description: 'Repository to unsubscribe (leave empty for all)',
+        type: 3, // STRING
+        required: false,
+        autocomplete: true
+      },
+      {
+        name: 'confirm',
+        description: 'Confirm unsubscribe all (type CONFIRM)',
         type: 3, // STRING
         required: false
       }
     ],
-    execute: async (interaction: DiscordInteraction) => {
+    execute: async (interaction) => {
+      const permCheck = checkPermission(interaction, 'unsubscribe');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('unsubscribe', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
       const args = parseOptions(interaction);
       const channelId = args.channel as string;
       const repo = (args.repo as string) || '';
+      const confirm = (args.confirm as string) || '';
+      
+      // Check if unsubscribing all without confirmation
+      if (!repo && confirm !== 'CONFIRM') {
+        return {
+          content: '⚠️ **Warning:** You are about to unsubscribe from ALL repositories.\n\nTo confirm, run:\n`/unsubscribe channel:<channel> confirm:CONFIRM`',
+          ephemeral: true
+        };
+      }
       
       try {
         const removed = await removeSubscription(channelId, repo);
@@ -227,31 +342,25 @@ export const commands: Record<string, DiscordCommand> = {
             content: repo 
               ? `⚠️ No subscription found for **${repo}** in <#${channelId}>`
               : `⚠️ No subscriptions found for <#${channelId}>`,
+            ephemeral: true
           };
         }
         
-        if (repo) {
-          return {
-            content: `✅ Unsubscribed <#${channelId}> from **${repo}**`,
-          };
-        } else {
-          return {
-            content: `✅ Unsubscribed <#${channelId}> from all repositories`,
-          };
-        }
-      } catch (err: any) {
-        console.error('[Unsubscribe] Error:', err);
         return {
-          content: `❌ Failed to unsubscribe: ${err.message || 'Unknown error'}`,
+          content: repo 
+            ? `✅ Unsubscribed <#${channelId}> from **${repo}**`
+            : `✅ Unsubscribed <#${channelId}> from all repositories`,
         };
+      } catch (err: any) {
+        return { content: `❌ Failed: ${err.message}` };
       }
     }
   },
 
-  // 5. List - List all subscriptions
+  // 6. List - with pagination
   list: {
     name: 'list',
-    description: 'List all GitHub event subscriptions',
+    description: 'List all GitHub event subscriptions (Moderator+)',
     options: [
       {
         name: 'channel',
@@ -260,7 +369,12 @@ export const commands: Record<string, DiscordCommand> = {
         required: false
       }
     ],
-    execute: async (interaction: DiscordInteraction) => {
+    execute: async (interaction) => {
+      const permCheck = checkPermission(interaction, 'list');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('list', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
       const args = parseOptions(interaction);
       const channelFilter = args.channel as string;
       
@@ -268,106 +382,99 @@ export const commands: Record<string, DiscordCommand> = {
         const subscriptions = await getAllSubscriptions();
         
         if (subscriptions.length === 0) {
-          return {
-            content: '📭 No active subscriptions found.',
-          };
+          return { content: '📭 No active subscriptions found.' };
         }
         
-        // Filter by channel if specified
         const filtered = channelFilter 
-          ? subscriptions.filter((sub) => sub.channelId === channelFilter)
+          ? subscriptions.filter(s => s.channelId === channelFilter)
           : subscriptions;
         
         if (filtered.length === 0) {
-          return {
-            content: `📭 No subscriptions found for <#${channelFilter}>.`,
-          };
+          return { content: `📭 No subscriptions found for <#${channelFilter}>.` };
         }
         
         // Group by channel
         const byChannel: Record<string, typeof subscriptions> = {};
         for (const sub of filtered) {
-          if (!byChannel[sub.channelId]) {
-            byChannel[sub.channelId] = [];
-          }
+          if (!byChannel[sub.channelId]) byChannel[sub.channelId] = [];
           byChannel[sub.channelId].push(sub);
         }
         
         const lines = Object.entries(byChannel).map(([chanId, subs]) => {
-          const repoList = subs.map((s) => `  • ${s.repo} (${s.events?.join(', ') || 'all'})`).join('\n');
+          const repoList = subs.map(s => `• ${s.repo} (${s.events?.join(', ') || 'all'})`).join('\n');
           return `<#${chanId}>:\n${repoList}`;
         });
         
         const embed: DiscordEmbed = {
           title: '📋 Active Subscriptions',
-          description: lines.join('\n\n'),
+          description: lines.join('\n\n').substring(0, 4000), // Discord limit
           color: EmbedColors.INFO,
-          footer: {
-            text: `${filtered.length} subscription(s) total`
-          }
+          footer: { text: `${filtered.length} subscription(s)` }
         };
         
         return { embeds: [embed] };
       } catch (err: any) {
-        console.error('[List] Error:', err);
-        return {
-          content: `❌ Failed to list subscriptions: ${err.message || 'Unknown error'}`,
-        };
+        return { content: `❌ Failed: ${err.message}` };
       }
     }
   },
 
-  // 6. Test - Send test notification
+  // 7. Test - with permission check
   test: {
     name: 'test',
-    description: 'Send a test notification to verify the bot is working',
-    execute: async () => {
+    description: 'Send a test notification (Moderator+)',
+    execute: async (interaction) => {
+      const permCheck = checkPermission(interaction, 'test');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('test', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
       const embed: DiscordEmbed = {
         title: '🧪 Test Notification',
-        description: 'This is a test notification from Meridus Bot!',
+        description: 'This is a test from Meridus Bot!',
         color: EmbedColors.PRIMARY,
         fields: [
-          {
-            name: '✅ Status',
-            value: 'Bot is working correctly',
-            inline: true
-          },
-          {
-            name: '⏰ Time',
-            value: new Date().toLocaleString(),
-            inline: true
-          }
+          { name: '✅ Status', value: 'Working correctly', inline: true },
+          { name: '⏰ Time', value: new Date().toLocaleString(), inline: true }
         ],
-        footer: {
-          text: 'Meridus Bot • DeltCroX DevHub'
-        },
+        footer: { text: 'Meridus Bot' },
         timestamp: new Date().toISOString()
       };
       
-      return { 
-        content: '✅ Test successful! The bot is working correctly.',
-        embeds: [embed] 
-      };
+      return { content: '✅ Test successful!', embeds: [embed] };
     }
   },
 
-  // 7. Repos - List GitHub repos
+  // 8. Repos - with pagination support
   repos: {
     name: 'repos',
     description: 'List your GitHub repositories',
-    execute: async (interaction: DiscordInteraction) => {
-      const access = await checkGitHubAccess(interaction);
-      if (!access.ok) {
-        return { content: access.message };
+    options: [
+      {
+        name: 'page',
+        description: 'Page number (default: 1)',
+        type: 4, // INTEGER
+        required: false
       }
+    ],
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'repos');
+        if (remaining > 0) {
+          return { content: formatCooldownMessage(remaining), ephemeral: true };
+        }
+        setCooldown(userId, 'repos');
+      }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
       
       const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
       
-      if (!octokit) {
-        return {
-          content: '❌ GitHub authentication failed.',
-        };
-      }
+      const args = parseOptions(interaction);
+      const page = (args.page as number) || 1;
       
       try {
         const res = await octokit.rest.repos.listForAuthenticatedUser({ 
@@ -376,112 +483,122 @@ export const commands: Record<string, DiscordCommand> = {
         });
         
         const repos = res.data;
+        if (repos.length === 0) return { content: '📂 No repositories found.' };
         
-        if (repos.length === 0) {
-          return {
-            content: '📂 No repositories found.',
-          };
-        }
+        const perPage = 10;
+        const totalPages = Math.ceil(repos.length / perPage);
+        const currentPage = Math.min(page, totalPages);
         
-        const topRepos = repos.slice(0, 10);
-        const repoList = topRepos.map((r: any) => {
+        const pageRepos = getPaginatedSlice(repos, currentPage, perPage);
+        
+        const repoList = pageRepos.map((r: any) => {
           const stars = r.stargazers_count || 0;
           const forks = r.forks_count || 0;
-          const language = r.language ? ` • ${r.language}` : '';
-          return `• **${r.full_name}** ⭐ ${stars} 🍴 ${forks}${language}`;
+          const lang = r.language ? ` • ${r.language}` : '';
+          return `• **${r.full_name}** ⭐ ${stars} 🍴 ${forks}${lang}`;
         }).join('\n');
         
         const embed: DiscordEmbed = {
           title: '📂 GitHub Repositories',
           description: repoList,
           color: EmbedColors.GITHUB,
-          footer: {
-            text: `Showing ${topRepos.length} of ${repos.length} repositories`
-          }
+          footer: { text: formatPaginationFooter(currentPage, totalPages, repos.length) }
         };
+        
+        // Store pagination state
+        if (userId) {
+          const stateId = storePaginationState({
+            userId,
+            command: 'repos',
+            data: repos,
+            currentPage,
+            perPage,
+            totalPages
+          });
+          
+          return { 
+            embeds: [embed],
+            components: generatePaginationButtons(currentPage, totalPages, `repos:${stateId}`)
+          };
+        }
         
         return { embeds: [embed] };
       } catch (err: any) {
-        console.error('[Repos] Error:', err);
-        if (err.status === 401) {
-          return {
-            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
-          };
-        }
-        return {
-          content: `❌ Failed to fetch repositories: ${err.message || 'Unknown error'}`,
-        };
+        return { content: formatErrorMessage(err, 'repos') };
       }
     }
   },
 
-  // 8. Issues - List GitHub issues
+  // 9. Issues - with enhanced error handling
   issues: {
     name: 'issues',
     description: 'List GitHub issues across your repositories',
     options: [
       {
         name: 'repo',
-        description: 'Filter by specific repository (owner/repo format)',
+        description: 'Filter by repository (owner/repo)',
         type: 3, // STRING
-        required: false
+        required: false,
+        autocomplete: true
+      },
+      {
+        name: 'state',
+        description: 'Issue state filter',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'open', value: 'open' },
+          { name: 'closed', value: 'closed' },
+          { name: 'all', value: 'all' }
+        ]
       }
     ],
-    execute: async (interaction: DiscordInteraction) => {
-      const access = await checkGitHubAccess(interaction);
-      if (!access.ok) {
-        return { content: access.message };
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'issues');
+        if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
+        setCooldown(userId, 'issues');
       }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
       
       const octokit = await getUserOctokit(interaction);
-      
-      if (!octokit) {
-        return {
-          content: '❌ GitHub authentication failed.',
-        };
-      }
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
       
       const args = parseOptions(interaction);
       const repoFilter = args.repo as string;
+      const state = (args.state as string) || 'open';
       
       try {
         let issues: any[] = [];
         
         if (repoFilter) {
-          // Get issues from specific repo
-          const [owner, repo] = repoFilter.split('/');
-          if (!owner || !repo) {
-            return {
-              content: '❌ Invalid repository format. Use: `owner/repo`',
-            };
+          if (!isValidRepoFormat(repoFilter)) {
+            return { content: '❌ Invalid repository format. Use: `owner/repo`' };
           }
           
+          const [owner, repo] = repoFilter.split('/');
           const res = await octokit.rest.issues.listForRepo({
-            owner,
-            repo,
-            state: 'open',
-            per_page: 10
+            owner, repo, state: state as any, per_page: 10
           });
           issues = res.data;
         } else {
-          // Get issues from all repos
-          const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ 
-            per_page: 50 
-          });
-          
+          // Get from all repos
+          const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 20 });
           const repos = reposRes.data;
+          
           const issuePromises = repos.map(async (repo: any) => {
             try {
               const res = await octokit.rest.issues.listForRepo({
                 owner: repo.owner.login,
                 repo: repo.name,
-                state: 'open',
-                per_page: 5
+                state: state as any,
+                per_page: 3
               });
               return res.data.map((i: any) => ({ ...i, repo_name: repo.full_name }));
-            } catch (e) {
-              return [];
-            }
+            } catch { return []; }
           });
           
           const allIssues = await Promise.all(issuePromises);
@@ -489,167 +606,659 @@ export const commands: Record<string, DiscordCommand> = {
         }
         
         if (issues.length === 0) {
-          return {
-            content: repoFilter 
-              ? `🐛 No open issues found in **${repoFilter}**.`
-              : '🐛 No open issues found across your repositories.',
-          };
+          return { content: `🐛 No ${state} issues found${repoFilter ? ` in ${repoFilter}` : ''}.` };
         }
         
         const issueList = issues.map((i: any) => {
-          const repo = i.repo_name || i.repository?.full_name || `${i.repository_url?.split('/').slice(-2).join('/')}`;
-          const labels = i.labels?.map((l: any) => l.name).join(', ') || '';
-          return `• **${repo}#${i.number}** ${i.title}${labels ? ` [${labels}]` : ''}`;
+          const repo = i.repo_name || i.repository?.full_name || '';
+          const labels = i.labels?.map((l: any) => l.name).slice(0, 2).join(', ') || '';
+          const stateEmoji = i.state === 'open' ? '🟢' : '🔴';
+          return `${stateEmoji} **${repo}#${i.number}** ${i.title}${labels ? ` \`[${labels}]\`` : ''}`;
         }).join('\n');
         
         const embed: DiscordEmbed = {
-          title: '🐛 GitHub Issues',
+          title: `🐛 ${state.charAt(0).toUpperCase() + state.slice(1)} Issues`,
           description: issueList,
-          color: EmbedColors.WARNING,
-          footer: {
-            text: `Showing ${issues.length} open issues${repoFilter ? ` in ${repoFilter}` : ''}`
-          }
+          color: state === 'open' ? EmbedColors.WARNING : EmbedColors.SUCCESS,
+          footer: { text: `Showing ${issues.length} issues` }
         };
         
         return { embeds: [embed] };
       } catch (err: any) {
-        console.error('[Issues] Error:', err);
-        if (err.status === 401) {
-          return {
-            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
-          };
-        }
-        return {
-          content: `❌ Failed to fetch issues: ${err.message || 'Unknown error'}`,
-        };
+        return { content: formatErrorMessage(err, 'issues') };
       }
     }
   },
 
-  // 9. Commits - List recent commits
+  // 10. Commits - with pagination
   commits: {
     name: 'commits',
-    description: 'List recent GitHub commits across your repositories',
+    description: 'List recent GitHub commits',
     options: [
       {
         name: 'repo',
-        description: 'Filter by specific repository (owner/repo format)',
+        description: 'Filter by repository (owner/repo)',
         type: 3, // STRING
-        required: false
+        required: false,
+        autocomplete: true
       }
     ],
-    execute: async (interaction: DiscordInteraction) => {
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'commits');
+        if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
+        setCooldown(userId, 'commits');
+      }
+      
       const access = await checkGitHubAccess(interaction);
-      if (!access.ok) {
-        return { content: access.message };
-      }
-
+      if (!access.ok) return { content: access.message };
+      
       const octokit = await getUserOctokit(interaction);
-
-      if (!octokit) {
-        return {
-          content: '❌ GitHub authentication failed.',
-        };
-      }
-
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
       const args = parseOptions(interaction);
       const repoFilter = args.repo as string;
-
+      
       try {
         let commits: any[] = [];
-
+        
         if (repoFilter) {
-          // Get commits from specific repo
-          const [owner, repo] = repoFilter.split('/');
-          if (!owner || !repo) {
-            return {
-              content: '❌ Invalid repository format. Use: `owner/repo`',
-            };
+          if (!isValidRepoFormat(repoFilter)) {
+            return { content: '❌ Invalid repository format. Use: `owner/repo`' };
           }
-
-          const res = await octokit.rest.repos.listCommits({
-            owner,
-            repo,
-            per_page: 10
-          });
+          
+          const [owner, repo] = repoFilter.split('/');
+          const res = await octokit.rest.repos.listCommits({ owner, repo, per_page: 10 });
           commits = res.data.map((c: any) => ({ ...c, repo_name: repoFilter }));
         } else {
-          // Get commits from all repos
           const reposRes = await octokit.rest.repos.listForAuthenticatedUser({
-            per_page: 10,
-            sort: 'updated'
+            per_page: 5, sort: 'updated'
           });
-
-          const repos = reposRes.data;
-          const commitPromises = repos.map(async (repo: any) => {
+          
+          const commitPromises = reposRes.data.map(async (repo: any) => {
             try {
               const res = await octokit.rest.repos.listCommits({
-                owner: repo.owner.login,
-                repo: repo.name,
-                per_page: 5
+                owner: repo.owner.login, repo: repo.name, per_page: 3
               });
-              return res.data.map((c: any) => ({
-                ...c,
-                repo_name: repo.name,
-                repo_owner: repo.owner.login
-              }));
-            } catch (e) {
-              return [];
-            }
+              return res.data.map((c: any) => ({ ...c, repo_name: repo.full_name }));
+            } catch { return []; }
           });
-
+          
           const allCommits = await Promise.all(commitPromises);
-          commits = allCommits
-            .flat()
+          commits = allCommits.flat()
             .sort((a: any, b: any) => new Date(b.commit.author?.date || 0).getTime() - new Date(a.commit.author?.date || 0).getTime())
             .slice(0, 10);
         }
-
+        
         if (commits.length === 0) {
-          return {
-            content: repoFilter
-              ? `📝 No commits found in **${repoFilter}**.`
-              : '📝 No commits found across your repositories.',
-          };
+          return { content: `📝 No commits found${repoFilter ? ` in ${repoFilter}` : ''}.` };
         }
-
+        
         const commitList = commits.map((c: any) => {
-          const message = c.commit.message?.split('\n')[0]?.substring(0, 50) || 'No message';
-          const sha = c.sha?.substring(0, 7) || 'unknown';
+          const msg = c.commit.message?.split('\n')[0]?.substring(0, 50) || 'No message';
+          const sha = c.sha?.substring(0, 7);
           const repo = c.repo_name || 'unknown';
-          return `• **\`${sha}\`** [${repo}] ${message}${c.commit.message?.length > 50 ? '...' : ''}`;
+          const author = c.commit.author?.name || 'unknown';
+          return `• **\`${sha}\`** [${repo}] ${msg}${c.commit.message?.length > 50 ? '...' : ''} - _${author}_`;
         }).join('\n');
         
         const embed: DiscordEmbed = {
           title: '📝 Recent Commits',
           description: commitList,
           color: EmbedColors.INFO,
-          footer: {
-            text: `Showing ${commits.length} commits${repoFilter ? ` in ${repoFilter}` : ''}`
-          }
+          footer: { text: `Showing ${commits.length} commits` }
         };
         
         return { embeds: [embed] };
       } catch (err: any) {
-        console.error('[Commits] Error:', err);
-        if (err.status === 401) {
-          return {
-            content: '🔒 GitHub token is invalid or expired. Please re-link your account on the website.',
-          };
+        return { content: formatErrorMessage(err, 'commits') };
+      }
+    }
+  },
+
+  // 11. Search - GitHub search
+  search: {
+    name: 'search',
+    description: 'Search GitHub repositories, issues, or code',
+    options: [
+      {
+        name: 'query',
+        description: 'Search query',
+        type: 3, // STRING
+        required: true
+      },
+      {
+        name: 'type',
+        description: 'What to search for',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'repositories', value: 'repositories' },
+          { name: 'issues', value: 'issues' },
+          { name: 'code', value: 'code' }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'search');
+        if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
+        setCooldown(userId, 'search');
+      }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      const args = parseOptions(interaction);
+      const query = args.query as string;
+      const type = (args.type as string) || 'repositories';
+      
+      try {
+        let results: any[] = [];
+        let title = '';
+        
+        switch (type) {
+          case 'repositories':
+            const repoRes = await octokit.rest.search.repos({ q: query, per_page: 5 });
+            results = repoRes.data.items;
+            title = '🔍 Repository Search';
+            break;
+          case 'issues':
+            const issueRes = await octokit.rest.search.issuesAndPullRequests({ q: query, per_page: 5 });
+            results = issueRes.data.items;
+            title = '🔍 Issue Search';
+            break;
+          case 'code':
+            const codeRes = await octokit.rest.search.code({ q: query, per_page: 5 });
+            results = codeRes.data.items;
+            title = '🔍 Code Search';
+            break;
         }
-        return {
-          content: `❌ Failed to fetch commits: ${err.message || 'Unknown error'}`,
+        
+        if (results.length === 0) {
+          return { content: `🔍 No ${type} found for query: **${query}**` };
+        }
+        
+        let resultList = '';
+        if (type === 'repositories') {
+          resultList = results.map((r: any) => 
+            `• **${r.full_name}** ⭐ ${r.stargazers_count} - ${r.description?.substring(0, 100) || 'No description'}${r.description?.length > 100 ? '...' : ''}`
+          ).join('\n');
+        } else if (type === 'issues') {
+          resultList = results.map((i: any) => 
+            `• **${i.repository_url?.split('/').slice(-2).join('/') || 'unknown'}#${i.number}** ${i.title} (${i.state})`
+          ).join('\n');
+        } else {
+          resultList = results.map((c: any) => 
+            `• **${c.repository.full_name}** - \`${c.path}\``
+          ).join('\n');
+        }
+        
+        const embed: DiscordEmbed = {
+          title,
+          description: resultList,
+          color: EmbedColors.PRIMARY,
+          footer: { text: `Query: ${query}` }
         };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'search') };
+      }
+    }
+  },
+
+  // 12. PR - List pull requests
+  pr: {
+    name: 'pr',
+    description: 'List pull requests for a repository',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo format)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'state',
+        description: 'PR state',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'open', value: 'open' },
+          { name: 'closed', value: 'closed' },
+          { name: 'all', value: 'all' }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'pr');
+        if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
+        setCooldown(userId, 'pr');
+      }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const state = (args.state as string) || 'open';
+      
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+      
+      const [owner, repoName] = repo.split('/');
+      
+      try {
+        const res = await octokit.rest.pulls.list({
+          owner, repo: repoName, state: state as any, per_page: 10
+        });
+        
+        const prs = res.data;
+        
+        if (prs.length === 0) {
+          return { content: `🔀 No ${state} pull requests in **${repo}**.` };
+        }
+        
+        const prList = prs.map((p: any) => {
+          const draft = p.draft ? '📝 ' : '';
+          const merged = p.merged_at ? '🔀 ' : p.state === 'closed' ? '❌ ' : '🟢 ';
+          const emoji = p.merged_at ? '🔀' : draft || merged;
+          return `${emoji} **#${p.number}** ${p.title} by ${p.user.login}`;
+        }).join('\n');
+        
+        const embed: DiscordEmbed = {
+          title: `🔀 Pull Requests in ${repo}`,
+          description: prList,
+          color: EmbedColors.PRIMARY,
+          footer: { text: `${prs.length} ${state} PRs` }
+        };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'pr') };
+      }
+    }
+  },
+
+  // 13. Settings - User preferences
+  settings: {
+    name: 'settings',
+    description: 'Manage your bot settings',
+    options: [
+      {
+        name: 'action',
+        description: 'Setting to change',
+        type: 3, // STRING
+        required: true,
+        choices: [
+          { name: 'View current settings', value: 'view' },
+          { name: 'Toggle DM notifications', value: 'dm' },
+          { name: 'Set digest mode', value: 'digest' },
+          { name: 'Enable silent mode', value: 'silent_on' },
+          { name: 'Disable silent mode', value: 'silent_off' },
+          { name: 'Mute repository', value: 'mute' },
+          { name: 'Unmute repository', value: 'unmute' },
+          { name: 'Set GitHub username', value: 'github_user' }
+        ]
+      },
+      {
+        name: 'value',
+        description: 'Value for the setting',
+        type: 3, // STRING
+        required: false
+      }
+    ],
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (!userId) return { content: '❌ Could not identify user.' };
+      
+      const args = parseOptions(interaction);
+      const action = args.action as string;
+      const value = (args.value as string) || '';
+      
+      const prefs = await getUserPreferences(userId);
+      
+      switch (action) {
+        case 'view': {
+          const silentStatus = prefs.silentMode?.enabled 
+            ? `🔇 Until ${new Date(prefs.silentMode.until).toLocaleString()}` 
+            : '🔊 Off';
+          
+          const embed: DiscordEmbed = {
+            title: '⚙️ Your Settings',
+            color: EmbedColors.INFO,
+            fields: [
+              { name: '📩 DM Notifications', value: prefs.dmNotifications ? '✅ Enabled' : '❌ Disabled', inline: true },
+              { name: '📊 Digest Mode', value: prefs.digestMode, inline: true },
+              { name: '🔇 Silent Mode', value: silentStatus, inline: true },
+              { name: '🔕 Muted Repos', value: prefs.mutedRepos.length > 0 ? prefs.mutedRepos.join(', ') : 'None', inline: false }
+            ]
+          };
+          return { embeds: [embed] };
+        }
+        
+        case 'dm': {
+          const newVal = !prefs.dmNotifications;
+          await toggleDMNotifications(userId, newVal);
+          return { content: `📩 DM notifications ${newVal ? '✅ enabled' : '❌ disabled'}.` };
+        }
+        
+        case 'digest': {
+          const mode = value as 'instant' | 'hourly' | 'daily';
+          if (!['instant', 'hourly', 'daily'].includes(mode)) {
+            return { content: '❌ Invalid mode. Use: instant, hourly, or daily' };
+          }
+          await setDigestMode(userId, mode);
+          return { content: `📊 Digest mode set to **${mode}**.` };
+        }
+        
+        case 'silent_on': {
+          const duration = parseInt(value) || 60;
+          await setSilentMode(userId, true, duration);
+          return { content: `🔇 Silent mode enabled for ${duration} minutes.` };
+        }
+        
+        case 'silent_off': {
+          await setSilentMode(userId, false);
+          return { content: '🔊 Silent mode disabled.' };
+        }
+        
+        case 'mute': {
+          if (!value) return { content: '❌ Please specify a repository to mute.' };
+          await muteRepository(userId, value);
+          return { content: `🔕 Muted **${value}**.` };
+        }
+        
+        case 'unmute': {
+          if (!value) return { content: '❌ Please specify a repository to unmute.' };
+          await unmuteRepository(userId, value);
+          return { content: `🔔 Unmuted **${value}**.` };
+        }
+        
+        case 'github_user': {
+          if (!value) return { content: '❌ Please specify your GitHub username.' };
+          await setGitHubUsername(userId, value);
+          return { content: `🔗 GitHub username set to **${value}**.` };
+        }
+        
+        default:
+          return { content: '❌ Unknown action.' };
+      }
+    }
+  },
+
+  // 14. MyStats - User statistics
+  mystats: {
+    name: 'mystats',
+    description: 'Show your GitHub activity statistics',
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (userId) {
+        const remaining = checkCooldown(userId, 'mystats');
+        if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
+        setCooldown(userId, 'mystats');
+      }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      try {
+        const user = await octokit.rest.users.getAuthenticated();
+        const repos = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 1 });
+        
+        const embed: DiscordEmbed = {
+          title: `📊 Stats for ${user.data.login}`,
+          color: EmbedColors.PRIMARY,
+          thumbnail: { url: user.data.avatar_url },
+          fields: [
+            { name: '📁 Public Repos', value: user.data.public_repos.toString(), inline: true },
+            { name: '👥 Followers', value: user.data.followers.toString(), inline: true },
+            { name: '👤 Following', value: user.data.following.toString(), inline: true },
+            { name: '📅 Joined', value: new Date(user.data.created_at).toLocaleDateString(), inline: true },
+            { name: '🏢 Company', value: user.data.company || 'N/A', inline: true },
+            { name: '📍 Location', value: user.data.location || 'N/A', inline: true }
+          ]
+        };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'user') };
+      }
+    }
+  },
+
+  // 15. Webhook - Health check
+  webhook: {
+    name: 'webhook',
+    description: 'Check webhook status for a repository (Moderator+)',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      }
+    ],
+    execute: async (interaction) => {
+      const permCheck = checkPermission(interaction, 'webhook');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('webhook', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+      
+      const [owner, repoName] = repo.split('/');
+      
+      try {
+        const hooks = await octokit.rest.repos.listWebhooks({ owner, repo: repoName });
+        const subs = await getRepoSubscriptions(repo);
+        
+        let status = '';
+        if (hooks.data.length === 0) {
+          status = '⚠️ No webhooks configured';
+        } else {
+          const meridusHook = hooks.data.find((h: any) => 
+            h.config?.url?.includes('meridusdev.in.th')
+          );
+          status = meridusHook 
+            ? `✅ Meridus webhook configured (${meridusHook.events?.length || 0} events)`
+            : `⚠️ ${hooks.data.length} webhook(s) but none for Meridus`;
+        }
+        
+        const embed: DiscordEmbed = {
+          title: `🔗 Webhook Status: ${repo}`,
+          color: hooks.data.length > 0 ? EmbedColors.SUCCESS : EmbedColors.WARNING,
+          fields: [
+            { name: 'Webhook Status', value: status, inline: false },
+            { name: '📡 Discord Subscriptions', value: `${subs.length} channel(s) subscribed`, inline: true }
+          ]
+        };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'webhook') };
+      }
+    }
+  },
+
+  // 16. Export - Subscription export
+  export: {
+    name: 'export',
+    description: 'Export all subscriptions as JSON (Admin only)',
+    execute: async (interaction) => {
+      const permCheck = checkPermission(interaction, 'export');
+      if (!permCheck.allowed) {
+        return { content: getPermissionErrorMessage('export', permCheck.required, permCheck.level), ephemeral: true };
+      }
+      
+      try {
+        const subs = await getAllSubscriptions();
+        const data = {
+          exported_at: new Date().toISOString(),
+          guild_id: interaction.guild_id,
+          subscriptions: subs
+        };
+        
+        return {
+          content: `📤 **${subs.length} subscription(s) exported.**\n\`\`\`json\n${JSON.stringify(data, null, 2).substring(0, 1900)}\`\`\``,
+          ephemeral: true
+        };
+      } catch (err: any) {
+        return { content: `❌ Export failed: ${err.message}` };
+      }
+    }
+  },
+
+  // 17. Actions - GitHub Actions status
+  actions: {
+    name: 'actions',
+    description: 'Show recent GitHub Actions workflow runs',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+      
+      const [owner, repoName] = repo.split('/');
+      
+      try {
+        const runs = await octokit.rest.actions.listWorkflowRunsForRepo({
+          owner, repo: repoName, per_page: 5
+        });
+        
+        if (runs.data.workflow_runs.length === 0) {
+          return { content: `🔧 No recent workflow runs in **${repo}**.` };
+        }
+        
+        const runList = runs.data.workflow_runs.map((r: any) => {
+          const statusEmoji = r.conclusion === 'success' ? '✅' : r.conclusion === 'failure' ? '❌' : '⏳';
+          return `${statusEmoji} **${r.name}** - ${r.head_branch} (${r.event})`;
+        }).join('\n');
+        
+        const embed: DiscordEmbed = {
+          title: `🔧 Recent Actions in ${repo}`,
+          description: runList,
+          color: EmbedColors.INFO,
+          footer: { text: 'Last 5 workflow runs' }
+        };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'actions') };
+      }
+    }
+  },
+
+  // 18. Reviews - Code review requests
+  reviews: {
+    name: 'reviews',
+    description: 'Show pull requests awaiting your review',
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+      
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+      
+      try {
+        const user = await octokit.rest.users.getAuthenticated();
+        const searchRes = await octokit.rest.search.issuesAndPullRequests({
+          q: `is:pr is:open review-requested:${user.data.login}`,
+          per_page: 10
+        });
+        
+        const prs = searchRes.data.items;
+        
+        if (prs.length === 0) {
+          return { content: '🎉 No pull requests awaiting your review!' };
+        }
+        
+        const prList = prs.map((p: any) => {
+          const repo = p.repository_url?.split('/').slice(-2).join('/') || 'unknown';
+          return `• **${repo}#${p.number}** ${p.title}`;
+        }).join('\n');
+        
+        const embed: DiscordEmbed = {
+          title: '👀 Review Requests',
+          description: prList,
+          color: EmbedColors.WARNING,
+          footer: { text: `${prs.length} PRs awaiting review` }
+        };
+        
+        return { embeds: [embed] };
+      } catch (err: any) {
+        return { content: formatErrorMessage(err, 'reviews') };
       }
     }
   },
 };
 
-// Helper to get command definitions for Discord registration
+// Get command definitions for Discord registration
 export function getCommandDefinitions() {
   return Object.values(commands).map(cmd => ({
     name: cmd.name,
     description: cmd.description,
-    options: cmd.options || []
+    options: cmd.options || [],
+    default_member_permissions: getPermissionForCommand(cmd.name)
   }));
+}
+
+// Get permission integer for command
+function getPermissionForCommand(commandName: string): string | undefined {
+  // Map commands to Discord permission bitfields
+  const permMap: Record<string, string> = {
+    'subscribe': '8', // Administrator
+    'unsubscribe': '8',
+    'list': '8192', // Manage Messages
+    'test': '8192',
+    'webhook': '8192',
+    'export': '8',
+    'import': '8',
+  };
+  return permMap[commandName];
 }

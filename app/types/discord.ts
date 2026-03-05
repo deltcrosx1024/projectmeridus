@@ -7,6 +7,7 @@ export interface DiscordCommandOption {
   type: number; // 3 = STRING, 4 = INTEGER, 7 = CHANNEL, etc.
   required?: boolean;
   choices?: { name: string; value: string | number }[];
+  autocomplete?: boolean;
 }
 
 export interface DiscordCommand {
