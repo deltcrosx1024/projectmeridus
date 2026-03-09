@@ -5,13 +5,13 @@ import Footer from '@/app/components/footer/Footer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useSettingsContext } from '@/app/contexts/SettingsContext';
 import { useState, useEffect } from 'react';
-import { UserSettings } from '@/app/lib/settings';
+import { UserSettings, DEFAULT_SETTINGS } from '@/app/lib/settings';
 import DataExport from '@/app/components/export/DataExport';
 
 interface PendingChanges {
   notifications: Partial<Pick<UserSettings, 'webhookNotifications' | 'issueAlerts' | 'commitNotifications'>>;
   repository: Partial<Pick<UserSettings, 'defaultView' | 'autoRefresh' | 'refreshInterval'>>;
-  appearance: Partial<Pick<UserSettings, 'compactMode'>>;
+  appearance: Partial<Pick<UserSettings, 'compactMode' | 'theme'>>;
 }
 
 export default function SettingsPage() {
@@ -21,8 +21,8 @@ export default function SettingsPage() {
   const [showDiscordConfirm, setShowDiscordConfirm] = useState(false);
   const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
   
-  // Local state mirrors settings
-  const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  // Initialize with default settings until actual settings are loaded from API
+  const [localSettings, setLocalSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   
   // Track which sections have unsaved changes
   const [pendingChanges, setPendingChanges] = useState<PendingChanges>({
@@ -42,11 +42,13 @@ export default function SettingsPage() {
     appearance: 'idle',
   });
 
-  // Sync local settings when context updates
+  // Sync local settings when context updates (settings loaded from API)
   useEffect(() => {
-    setLocalSettings(settings);
-    setPendingChanges({ notifications: {}, repository: {}, appearance: {} });
-  }, [settings]);
+    if (!settingsLoading && settings) {
+      setLocalSettings(settings);
+      setPendingChanges({ notifications: {}, repository: {}, appearance: {} });
+    }
+  }, [settings, settingsLoading]);
 
   const hasNotificationChanges = Object.keys(pendingChanges.notifications).length > 0;
   const hasRepositoryChanges = Object.keys(pendingChanges.repository).length > 0;
@@ -82,7 +84,7 @@ export default function SettingsPage() {
       }, 2000);
     } catch {
       setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
-      // Revert local changes on error
+      // Revert local changes to current settings
       setLocalSettings(settings);
     }
   };
