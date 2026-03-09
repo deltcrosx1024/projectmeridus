@@ -6,6 +6,7 @@ import {
   InteractionResponseType 
 } from '@/app/types/discord';
 import { handleAutocomplete as handleAutocompleteLogic } from '@/app/lib/discord/autocomplete';
+import { getUserLink } from '@/app/lib/userLinks';
 
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
 
@@ -17,17 +18,37 @@ interface CommandResult {
 }
 
 /**
+ * Get the GitHub token for a user from their Discord interaction
+ */
+async function getGitHubTokenFromInteraction(interaction: DiscordInteraction): Promise<string | null> {
+  const discordUserId = interaction.member?.user?.id || interaction.user?.id;
+  
+  if (!discordUserId) {
+    console.error('[Discord] No user ID found in interaction');
+    return null;
+  }
+
+  const userLink = await getUserLink(discordUserId);
+  
+  if (!userLink) {
+    console.error(`[Discord] No GitHub link found for user ${discordUserId}`);
+    return null;
+  }
+
+  return userLink.githubToken;
+}
+
+/**
  * Execute a rebase via GitHub API
  */
-async function executeRebase(repo: string, prNumber: string): Promise<void> {
+async function executeRebase(repo: string, prNumber: string, githubToken: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const prResponse = await fetch(
@@ -67,15 +88,14 @@ async function executeRebase(repo: string, prNumber: string): Promise<void> {
 /**
  * Create a new issue via GitHub API
  */
-async function createIssue(repo: string, title: string, body: string): Promise<{ url: string }> {
+async function createIssue(repo: string, title: string, body: string, githubToken: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -103,15 +123,14 @@ async function createIssue(repo: string, title: string, body: string): Promise<{
 /**
  * Create a new pull request via GitHub API
  */
-async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main'): Promise<{ url: string }> {
+async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main', githubToken?: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -139,15 +158,14 @@ async function createPullRequest(repo: string, title: string, body: string, head
 /**
  * Merge a pull request via GitHub API
  */
-async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge'): Promise<void> {
+async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge', githubToken?: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -172,15 +190,14 @@ async function mergePullRequest(repo: string, prNumber: string, method: string =
 /**
  * Add a comment to a pull request via GitHub API
  */
-async function addComment(repo: string, prNumber: string, body: string): Promise<{ url: string }> {
+async function addComment(repo: string, prNumber: string, body: string, githubToken?: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -208,15 +225,14 @@ async function addComment(repo: string, prNumber: string, body: string): Promise
 /**
  * Add a comment to an issue via GitHub API
  */
-async function addIssueComment(repo: string, issueNumber: string, body: string): Promise<{ url: string }> {
+async function addIssueComment(repo: string, issueNumber: string, body: string, githubToken?: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -244,15 +260,14 @@ async function addIssueComment(repo: string, issueNumber: string, body: string):
 /**
  * Close a pull request via GitHub API
  */
-async function closePullRequest(repo: string, prNumber: string): Promise<void> {
+async function closePullRequest(repo: string, prNumber: string, githubToken?: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -277,15 +292,14 @@ async function closePullRequest(repo: string, prNumber: string): Promise<void> {
 /**
  * Close an issue via GitHub API
  */
-async function closeIssue(repo: string, issueNumber: string): Promise<void> {
+async function closeIssue(repo: string, issueNumber: string, githubToken?: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -310,15 +324,14 @@ async function closeIssue(repo: string, issueNumber: string): Promise<void> {
 /**
  * Reopen an issue via GitHub API
  */
-async function reopenIssue(repo: string, issueNumber: string): Promise<void> {
+async function reopenIssue(repo: string, issueNumber: string, githubToken?: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  const githubToken = process.env.GITHUB_TOKEN;
   if (!githubToken) {
-    throw new Error('GitHub token not configured');
+    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -636,9 +649,21 @@ function parseRebaseData(customId: string): { repo: string; prNumber: string } |
   return { repo: parts[2], prNumber: parts[3] };
 }
 
-async function handleRebaseExecute(repo: string, prNumber: string): Promise<Response> {
+async function handleRebaseExecute(repo: string, prNumber: string, interaction: DiscordInteraction): Promise<Response> {
+  const githubToken = await getGitHubTokenFromInteraction(interaction);
+  
+  if (!githubToken) {
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+        flags: 64,
+      },
+    });
+  }
+
   try {
-    await executeRebase(repo, prNumber);
+    await executeRebase(repo, prNumber, githubToken);
     return createResponse({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
@@ -659,7 +684,7 @@ async function handleRebaseExecute(repo: string, prNumber: string): Promise<Resp
   }
 }
 
-function handleMessageComponent(interaction: DiscordInteraction): Response {
+async function handleMessageComponent(interaction: DiscordInteraction): Promise<Response> {
   const customId = interaction.data?.custom_id || '';
   console.log(`[Discord] Component interaction: ${customId}`);
 
@@ -715,7 +740,7 @@ function handleMessageComponent(interaction: DiscordInteraction): Response {
   if (customId.startsWith('gh:close_pr:')) {
     const data = parseCustomId(customId, 'gh:close_pr:');
     if (data) {
-      return closePRHandler(data.repo, data.number);
+      return await closePRHandler(data.repo, data.number, interaction);
     }
   }
 
@@ -723,7 +748,7 @@ function handleMessageComponent(interaction: DiscordInteraction): Response {
   if (customId.startsWith('gh:close_issue:')) {
     const data = parseCustomId(customId, 'gh:close_issue:');
     if (data) {
-      return closeIssueHandler(data.repo, data.number);
+      return await closeIssueHandler(data.repo, data.number, interaction);
     }
   }
 
@@ -731,7 +756,7 @@ function handleMessageComponent(interaction: DiscordInteraction): Response {
   if (customId.startsWith('gh:reopen_issue:')) {
     const data = parseCustomId(customId, 'gh:reopen_issue:');
     if (data) {
-      return reopenIssueHandler(data.repo, data.number);
+      return await reopenIssueHandler(data.repo, data.number, interaction);
     }
   }
 
@@ -781,58 +806,106 @@ function handleMessageComponent(interaction: DiscordInteraction): Response {
 }
 
 // Handler functions for direct actions
-function closePRHandler(repo: string, prNumber: string): Response {
-  closePullRequest(repo, prNumber)
-    .then(() => {
-      console.log(`[Discord] PR ${repo}#${prNumber} closed successfully`);
-    })
-    .catch((err) => {
-      console.error('[Discord] Close PR error:', err);
+async function closePRHandler(repo: string, prNumber: string, interaction: DiscordInteraction): Promise<Response> {
+  const githubToken = await getGitHubTokenFromInteraction(interaction);
+  
+  if (!githubToken) {
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+        flags: 64,
+      },
     });
+  }
 
-  return createResponse({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: `🚫 Closing PR **${repo}#${prNumber}**...`,
-      flags: 64,
-    },
-  });
+  try {
+    await closePullRequest(repo, prNumber, githubToken);
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ PR **${repo}#${prNumber}** has been closed!`,
+        flags: 64,
+      },
+    });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ Failed to close PR: ${errorMessage}`,
+        flags: 64,
+      },
+    });
+  }
 }
 
-function closeIssueHandler(repo: string, issueNumber: string): Response {
-  closeIssue(repo, issueNumber)
-    .then(() => {
-      console.log(`[Discord] Issue ${repo}#${issueNumber} closed successfully`);
-    })
-    .catch((err) => {
-      console.error('[Discord] Close issue error:', err);
+async function closeIssueHandler(repo: string, issueNumber: string, interaction: DiscordInteraction): Promise<Response> {
+  const githubToken = await getGitHubTokenFromInteraction(interaction);
+  
+  if (!githubToken) {
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+        flags: 64,
+      },
     });
+  }
 
-  return createResponse({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: `🚫 Closing issue **${repo}#${issueNumber}**...`,
-      flags: 64,
-    },
-  });
+  try {
+    await closeIssue(repo, issueNumber, githubToken);
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Issue **${repo}#${issueNumber}** has been closed!`,
+        flags: 64,
+      },
+    });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ Failed to close issue: ${errorMessage}`,
+        flags: 64,
+      },
+    });
+  }
 }
 
-function reopenIssueHandler(repo: string, issueNumber: string): Response {
-  reopenIssue(repo, issueNumber)
-    .then(() => {
-      console.log(`[Discord] Issue ${repo}#${issueNumber} reopened successfully`);
-    })
-    .catch((err) => {
-      console.error('[Discord] Reopen issue error:', err);
+async function reopenIssueHandler(repo: string, issueNumber: string, interaction: DiscordInteraction): Promise<Response> {
+  const githubToken = await getGitHubTokenFromInteraction(interaction);
+  
+  if (!githubToken) {
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+        flags: 64,
+      },
     });
+  }
 
-  return createResponse({
-    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    data: {
-      content: `🔄 Reopening issue **${repo}#${issueNumber}**...`,
-      flags: 64,
-    },
-  });
+  try {
+    await reopenIssue(repo, issueNumber, githubToken);
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `✅ Issue **${repo}#${issueNumber}** has been reopened!`,
+        flags: 64,
+      },
+    });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return createResponse({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `❌ Failed to reopen issue: ${errorMessage}`,
+        flags: 64,
+      },
+    });
+  }
 }
 
 async function handleAutocomplete(interaction: DiscordInteraction): Promise<Response> {
@@ -872,7 +945,7 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
-    return handleRebaseExecute(data.repo, data.prNumber);
+    return handleRebaseExecute(data.repo, data.prNumber, interaction);
   }
 
   // Handle create issue
@@ -893,8 +966,20 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
+    const githubToken = await getGitHubTokenFromInteraction(interaction);
+    
+    if (!githubToken) {
+      return createResponse({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+          flags: 64,
+        },
+      });
+    }
+
     try {
-      const result = await createIssue(repo, title, body);
+      const result = await createIssue(repo, title, body, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -934,8 +1019,20 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
+    const githubToken = await getGitHubTokenFromInteraction(interaction);
+    
+    if (!githubToken) {
+      return createResponse({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+          flags: 64,
+        },
+      });
+    }
+
     try {
-      const result = await createPullRequest(repo, title, body, head, base);
+      const result = await createPullRequest(repo, title, body, head, base, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -964,8 +1061,20 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const title = interaction.data?.components?.[0]?.components?.[0]?.value || '';
     const message = interaction.data?.components?.[1]?.components?.[0]?.value || '';
 
+    const githubToken = await getGitHubTokenFromInteraction(interaction);
+    
+    if (!githubToken) {
+      return createResponse({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+          flags: 64,
+        },
+      });
+    }
+
     try {
-      await mergePullRequest(repo, prNumber, 'merge');
+      await mergePullRequest(repo, prNumber, 'merge', githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -1003,8 +1112,20 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
+    const githubToken = await getGitHubTokenFromInteraction(interaction);
+    
+    if (!githubToken) {
+      return createResponse({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+          flags: 64,
+        },
+      });
+    }
+
     try {
-      const result = await addComment(repo, prNumber, body);
+      const result = await addComment(repo, prNumber, body, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -1042,8 +1163,20 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
+    const githubToken = await getGitHubTokenFromInteraction(interaction);
+    
+    if (!githubToken) {
+      return createResponse({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+          flags: 64,
+        },
+      });
+    }
+
     try {
-      const result = await addIssueComment(repo, issueNumber, body);
+      const result = await addIssueComment(repo, issueNumber, body, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
