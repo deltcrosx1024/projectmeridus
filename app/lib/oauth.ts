@@ -77,3 +77,31 @@ export function handleDiscordLogin(clientId: string, permissions: string = '8'):
   
   window.location.href = getDiscordAuthUrl(clientId, redirectUri, state, permissions);
 }
+
+/**
+ * Get Vercel OAuth authorization URL
+ */
+export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: 'read write',
+    ...(state && { state }),
+  });
+  return `https://vercel.com/oauth?${params}`;
+}
+
+/**
+ * Client-side hook for Vercel login
+ * Usage: onClick={() => handleVercelLogin()}
+ */
+export function handleVercelLogin(clientId: string): void {
+  const redirectUri = window.location.origin + '/api/auth/callback?service=vercel';
+  const state = generateState();
+  
+  // Store state and service type in cookies for CSRF validation
+  document.cookie = `oauth_state=${state}; path=/; max-age=600`;
+  document.cookie = `oauth_service=vercel; path=/; max-age=600`;
+  
+  window.location.href = getVercelAuthUrl(clientId, redirectUri, state);
+}
