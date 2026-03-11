@@ -88,7 +88,7 @@ export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: 
     scope: 'read write',
     ...(state && { state }),
   });
-  return `https://vercel.com/oauth?${params}`;
+  return `https://vercel.com/oauth/authorize?${params}`;
 }
 
 /**
