@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { handleGitHub } from '@/app/api/auth/services/github';
 import { handleDiscord } from '@/app/api/auth/services/discord';
+import { handleVercel } from '@/app/api/auth/services/vercel';
 
 /**
  * Universal OAuth Callback Handler
@@ -113,6 +114,9 @@ export async function GET(request: Request) {
             maxAge: 60 * 60 * 24,
           });
         }
+        break;
+      case 'vercel':
+        response = await handleVercel(code, request);
         break;
       default:
         return NextResponse.json({ error: `Unknown service: ${service}` }, { status: 400 });

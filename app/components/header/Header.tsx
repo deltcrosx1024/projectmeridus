@@ -11,7 +11,7 @@
 'use client';
 
 import { NAV_ITEMS } from '@/app/constants/data';
-import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
+import { handleGitHubLogin, handleDiscordLogin, handleVercelLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ export default function Header() {
   const { githubUser, discordUser, logout, isLoading } = useAuth();
   const [showGithubMenu, setShowGithubMenu] = useState(false);
   const [showDiscordMenu, setShowDiscordMenu] = useState(false);
+  const [showVercelMenu, setShowVercMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -160,6 +161,23 @@ export default function Header() {
                 </button>
               )}
             </div>
+
+            {/* Vertical Separator */}
+            <div className="w-px h-6 bg-slate-600 mx-1" title="Optional - Connect for Vercel deployments"></div>
+
+            {/* Vercel (Optional) */}
+            <div className="relative">
+              <button
+                onClick={() => handleVercelLogin(process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID || '')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                title="Optional - Link Vercel for deployment status"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 76 76" fill="currentColor">
+                  <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
+                </svg>
+                Vercel
+              </button>
+            </div>
           </div>
 
           {/* ===== MOBILE HAMBURGER BUTTON ===== */}
@@ -262,6 +280,17 @@ export default function Header() {
                   Discord
                 </button>
               )}
+
+              {/* Vercel Mobile (Optional) */}
+              <button
+                onClick={() => handleVercelLogin(process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID || '')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 76 76" fill="currentColor">
+                  <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
+                </svg>
+                Vercel <span className="text-xs text-slate-400">(Optional)</span>
+              </button>
             </div>
           </div>
         )}

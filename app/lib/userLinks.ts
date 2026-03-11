@@ -1,5 +1,5 @@
 // lib/userLinks.ts
-// Discord User ID <-> GitHub Token linking with Redis storage
+// Discord User ID <-> GitHub/Vercel Token linking with Redis storage
 
 import { redis } from './redis';
 import { encryptToken, decryptToken, hashUserId } from './crypto';
@@ -9,6 +9,9 @@ export interface UserLink {
   discordUsername?: string;
   githubToken: string;
   githubUsername?: string;
+  vercelToken?: string;
+  vercelUsername?: string;
+  vercelTeamId?: string;
   linkedAt: string;
   lastUsed?: string;
 }
@@ -48,6 +51,46 @@ export async function linkUser(
 }
 
 /**
+ * Link Vercel account to existing Discord-GitHub link
+ * Called during OAuth callback when user adds Vercel to existing account
+ */
+export async function linkVercelAccount(
+  discordUserId: string,
+  vercelToken: string,
+  metadata?: {
+    vercelUsername?: string;
+    vercelTeamId?: string;
+  }
+): Promise<void> {
+  const key = `${KEY_PREFIX}${discordUserId}`;
+  
+  const existingData = await redis.get<string>(key);
+  if (!existingData) {
+    throw new Error('No existing user link found. Please link Discord first.');
+  }
+  
+  const encryptedToken = await encryptToken(vercelToken);
+  
+  let parsed: any;
+  if (typeof existingData === 'string') {
+    parsed = JSON.parse(existingData);
+  } else {
+    parsed = existingData;
+  }
+  
+  const updatedLink = {
+    ...parsed,
+    vercelToken: encryptedToken,
+    vercelUsername: metadata?.vercelUsername || parsed.vercelUsername,
+    vercelTeamId: metadata?.vercelTeamId || parsed.vercelTeamId,
+    lastUsed: new Date().toISOString(),
+  };
+  
+  await redis.setex(key, TTL_SECONDS, JSON.stringify(updatedLink));
+  console.log(`[UserLinks] Linked Vercel to Discord user ${discordUserId}`);
+}
+
+/**
  * Get a user's linked GitHub token
  * Called from Discord bot commands
  */
@@ -61,7 +104,7 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
 
   try {
     // Handle both string and already-parsed object
-    let parsed: Omit<UserLink, 'githubToken'> & { githubToken: string };
+    let parsed: Omit<UserLink, 'githubToken' | 'vercelToken'> & { githubToken: string; vercelToken?: string };
 
     if (typeof data === 'string') {
       parsed = JSON.parse(data);
@@ -73,6 +116,12 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
 
     // Decrypt the GitHub token
     const decryptedToken = await decryptToken(parsed.githubToken);
+    
+    // Decrypt Vercel token if exists
+    let decryptedVercelToken: string | undefined;
+    if (parsed.vercelToken) {
+      decryptedVercelToken = await decryptToken(parsed.vercelToken);
+    }
 
     // Update last used time
     await redis.setex(key, TTL_SECONDS, JSON.stringify({
@@ -83,6 +132,7 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
     return {
       ...parsed,
       githubToken: decryptedToken,
+      vercelToken: decryptedVercelToken,
     };
   } catch (error) {
     console.error(`[UserLinks] Failed to parse link for ${discordUserId}:`, error);
@@ -98,6 +148,61 @@ export async function hasLinkedGitHub(discordUserId: string): Promise<boolean> {
   const key = `${KEY_PREFIX}${discordUserId}`;
   const exists = await redis.exists(key);
   return exists === 1;
+}
+
+/**
+ * Get user's Vercel token (decrypted)
+ */
+export async function getUserVercelToken(discordUserId: string): Promise<string | null> {
+  const key = `${KEY_PREFIX}${discordUserId}`;
+  
+  const data = await redis.get<string>(key);
+  if (!data) {
+    return null;
+  }
+  
+  try {
+    let parsed: any;
+    if (typeof data === 'string') {
+      parsed = JSON.parse(data);
+    } else {
+      parsed = data;
+    }
+    
+    if (!parsed.vercelToken) {
+      return null;
+    }
+    
+    return await decryptToken(parsed.vercelToken);
+  } catch (error) {
+    console.error(`[UserLinks] Failed to get Vercel token for ${discordUserId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Check if user has Vercel linked
+ */
+export async function hasLinkedVercel(discordUserId: string): Promise<boolean> {
+  const key = `${KEY_PREFIX}${discordUserId}`;
+  
+  const data = await redis.get<string>(key);
+  if (!data) {
+    return false;
+  }
+  
+  try {
+    let parsed: any;
+    if (typeof data === 'string') {
+      parsed = JSON.parse(data);
+    } else {
+      parsed = data;
+    }
+    
+    return !!parsed.vercelToken;
+  } catch {
+    return false;
+  }
 }
 
 /**
