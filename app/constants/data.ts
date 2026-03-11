@@ -109,14 +109,14 @@ export const FOOTER_SECTIONS: FooterSection[] = [
     title: 'Company',
     links: [
       { label: 'About', href: '#' },
-      { label: 'Contact', href: '#' },
-      { label: 'Support', href: '#' },
+      { label: 'Contact', href: 'mailto:contact@meridus.dev' },
+      { label: 'Code of Conduct', href: '/code-of-conduct' },
     ],
   },
   {
     title: 'Connect',
     links: [
-      { label: 'GitHub', href: '#' },
+      { label: 'GitHub', href: 'https://github.com' },
       { label: 'Twitter', href: '#' },
       { label: 'Discord', href: '#' },
     ],

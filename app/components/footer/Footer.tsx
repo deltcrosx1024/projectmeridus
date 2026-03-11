@@ -40,12 +40,16 @@ export default function Footer() {
             © 2024 deltcrosx1024. All rights reserved.{' '}
             <span className="hidden sm:inline">|{' '}</span>
             <br className="sm:hidden" />
-            <a href="#" className="hover:text-white transition">
+            <a href="/privacy-policy" className="hover:text-white transition">
               Privacy
             </a>{' '}
             <span className="mx-1">|</span>{' '}
-            <a href="#" className="hover:text-white transition">
+            <a href="/terms-of-service" className="hover:text-white transition">
               Terms
+            </a>
+            <span className="mx-1">|</span>{' '}
+            <a href="/code-of-conduct" className="hover:text-white transition">
+              Code of Conduct
             </a>
           </p>
         </div>
