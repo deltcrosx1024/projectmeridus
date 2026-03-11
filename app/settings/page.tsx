@@ -76,15 +76,13 @@ export default function SettingsPage() {
       await updateSettings(changes);
       setSaveStatus(prev => ({ ...prev, [section]: 'saved' }));
       
-      // Clear pending changes for this section
       setPendingChanges(prev => ({ ...prev, [section]: {} }));
       
       setTimeout(() => {
         setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
       }, 2000);
-    } catch {
+    } catch (err) {
       setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
-      // Revert local changes to current settings
       setLocalSettings(settings);
     }
   };
@@ -313,15 +311,16 @@ export default function SettingsPage() {
                 {hasNotificationChanges && (
                   <>
                     <button
-                      onClick={() => resetChanges('notifications')}
-                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
-                    >
-                      Reset
-                    </button>
-                    <button
                       onClick={() => applyChanges('notifications')}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                      disabled={saveStatus.notifications === 'saving'}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
                     >
+                      {saveStatus.notifications === 'saving' && (
+                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
                       Apply Changes
                     </button>
                   </>
@@ -406,15 +405,16 @@ export default function SettingsPage() {
                 {hasRepositoryChanges && (
                   <>
                     <button
-                      onClick={() => resetChanges('repository')}
-                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
-                    >
-                      Reset
-                    </button>
-                    <button
                       onClick={() => applyChanges('repository')}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                      disabled={saveStatus.repository === 'saving'}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
                     >
+                      {saveStatus.repository === 'saving' && (
+                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
                       Apply Changes
                     </button>
                   </>
@@ -497,15 +497,16 @@ export default function SettingsPage() {
                 {hasAppearanceChanges && (
                   <>
                     <button
-                      onClick={() => resetChanges('appearance')}
-                      className="px-3 py-1.5 text-sm text-slate-400 hover:text-white transition-colors"
-                    >
-                      Reset
-                    </button>
-                    <button
                       onClick={() => applyChanges('appearance')}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                      disabled={saveStatus.appearance === 'saving'}
+                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors flex items-center gap-2"
                     >
+                      {saveStatus.appearance === 'saving' && (
+                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
                       Apply Changes
                     </button>
                   </>

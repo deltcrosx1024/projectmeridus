@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { UserSettings, DEFAULT_SETTINGS } from '@/app/lib/settings';
 
 interface UseSettingsReturn {
@@ -15,6 +15,7 @@ export function useSettings(): UseSettingsReturn {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const saveInProgress = useRef(false);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -25,7 +26,6 @@ export function useSettings(): UseSettingsReturn {
       
       if (!response.ok) {
         if (response.status === 401) {
-          // Not authenticated, use defaults
           setSettings(DEFAULT_SETTINGS);
           return;
         }
@@ -37,7 +37,6 @@ export function useSettings(): UseSettingsReturn {
     } catch (err) {
       console.error('[useSettings] Error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-      // Fall back to defaults
       setSettings(DEFAULT_SETTINGS);
     } finally {
       setIsLoading(false);
@@ -45,10 +44,19 @@ export function useSettings(): UseSettingsReturn {
   }, []);
 
   const updateSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
+    if (saveInProgress.current) {
+      console.log('[useSettings] Save already in progress, waiting...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (saveInProgress.current) {
+        throw new Error('Another save is in progress. Please wait.');
+      }
+    }
+    
+    saveInProgress.current = true;
+    
     try {
       setError(null);
       
-      // Optimistic update
       setSettings(prev => ({ ...prev, ...newSettings }));
       
       const response = await fetch('/api/settings', {
@@ -66,9 +74,10 @@ export function useSettings(): UseSettingsReturn {
     } catch (err) {
       console.error('[useSettings] Update error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-      // Revert on error by refetching
       await fetchSettings();
       throw err;
+    } finally {
+      saveInProgress.current = false;
     }
   }, [fetchSettings]);
 
