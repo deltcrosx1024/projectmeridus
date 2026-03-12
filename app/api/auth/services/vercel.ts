@@ -40,15 +40,23 @@ export async function handleVercel(code: string, request: Request) {
 
   // Get code verifier from cookie
   const cookieStore = await cookies();
-  const codeVerifier = cookieStore.get('vercel_code_verifier')?.value;
+  const codeVerifierEncoded = cookieStore.get('vercel_code_verifier')?.value;
   
-  if (!codeVerifier) {
+  if (!codeVerifierEncoded) {
     throw new Error('Missing code verifier. Please try logging in again.');
   }
+  
+  // Decode the URL-encoded code verifier
+  const codeVerifier = decodeURIComponent(codeVerifierEncoded);
+  
+  console.log('[Vercel OAuth] Code verifier length:', codeVerifier.length);
+  console.log('[Vercel OAuth] Code verifier (first 20 chars):', codeVerifier.substring(0, 20));
 
   console.log('[Vercel OAuth] Exchanging code for token...');
 
   // Exchange code for token using PKCE
+  console.log('[Vercel OAuth] Sending code_verifier length:', codeVerifier.length);
+  
   const tokenResp = await fetch(VERCEL_TOKEN_URL, {
     method: 'POST',
     headers: {
