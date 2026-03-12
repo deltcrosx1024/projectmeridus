@@ -94,29 +94,34 @@ export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: 
 
 /**
  * Client-side hook for Vercel login
- * Uses Sign in with Vercel (new PKCE flow)
+ * Uses Sign in with Vercel (PKCE flow with S256)
  */
-export function handleVercelLogin(clientId: string): void {
+export async function handleVercelLogin(clientId: string): Promise<void> {
   const redirectUri = window.location.origin + '/api/auth/callback?service=vercel';
   const state = generateState();
   
-  // Generate code verifier (URL-safe characters only, 43-128 chars)
-  const codeVerifier = generateState() + generateState() + generateState();
-  // Base64URL encode for code challenge
-  const codeChallenge = btoa(codeVerifier)
+  // Generate code verifier (43-128 URL-safe characters)
+  const codeVerifier = generateState() + generateState();
+  
+  // Generate code_challenge using S256 (SHA256 hash + base64url encoding)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const codeChallenge = btoa(String.fromCharCode(...hashArray))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
   
   console.log('[Vercel] Code verifier length:', codeVerifier.length);
-  console.log('[Vercel] Code challenge length:', codeChallenge.length);
+  console.log('[Vercel] Code challenge:', codeChallenge.substring(0, 20) + '...');
   
-  // Store state and code verifier in cookies (encodeURIComponent to handle special chars)
+  // Store state and code verifier in cookies
   document.cookie = `oauth_state=${encodeURIComponent(state)}; path=/; max-age=600; SameSite=Lax`;
   document.cookie = `oauth_service=vercel; path=/; max-age=600; SameSite=Lax`;
   document.cookie = `vercel_code_verifier=${encodeURIComponent(codeVerifier)}; path=/; max-age=600; SameSite=Lax`;
   
-  // Build authorization URL with PKCE
+  // Build authorization URL with PKCE using S256
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
