@@ -42,13 +42,22 @@ function getSettingsKey(userId: string): string {
 export async function getUserSettings(userId: string): Promise<UserSettings> {
   try {
     const key = getSettingsKey(userId);
-    const data = await redis.get<string>(key);
+    const data = await redis.get(key);
     
     if (!data) {
       return DEFAULT_SETTINGS;
     }
     
-    const parsed = JSON.parse(data);
+    // Handle both string and object data types from Redis
+    let parsed: any;
+    if (typeof data === 'string') {
+      parsed = JSON.parse(data);
+    } else if (typeof data === 'object') {
+      parsed = data;
+    } else {
+      throw new Error(`Unexpected data type: ${typeof data}`);
+    }
+    
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (error) {
     console.error('[Settings] Failed to get settings:', error);
