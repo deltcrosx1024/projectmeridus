@@ -14,17 +14,17 @@ import { FOOTER_SECTIONS } from '@/app/constants/data';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-16">
+    <footer className="border-t border-[#333333] bg-black mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ===== FOOTER SECTIONS GRID ===== */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
           {FOOTER_SECTIONS.map((section) => (
             <div key={section.title}>
-              <h3 className="text-white font-semibold mb-4" style={{ fontFamily: 'var(--font-aldrich)' }}>{section.title}</h3>
-              <ul className="space-y-2 text-slate-400 text-sm" style={{ fontFamily: 'var(--font-archivo)' }}>
+              <h3 className="text-white font-semibold mb-4 text-sm">{section.title}</h3>
+              <ul className="space-y-2 text-[#A1A1AA] text-sm">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <a href={link.href} className="hover:text-white transition">
+                    <a href={link.href} className="hover:text-white transition text-sm">
                       {link.label}
                     </a>
                   </li>
@@ -35,8 +35,8 @@ export default function Footer() {
         </div>
 
         {/* ===== FOOTER BOTTOM ===== */}
-        <div className="border-t border-slate-700/50 pt-8">
-          <p className="text-slate-400 text-sm text-center" style={{ fontFamily: 'var(--font-archivo)' }}>
+        <div className="border-t border-[#333333] pt-8">
+          <p className="text-[#A1A1AA] text-sm text-center">
             © 2024 deltcrosx1024. All rights reserved.{' '}
             <span className="hidden sm:inline">|{' '}</span>
             <br className="sm:hidden" />

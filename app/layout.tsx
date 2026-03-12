@@ -5,7 +5,7 @@
  */
 
 import type { Metadata } from "next";
-import { Geist_Mono, Aldrich, Archivo } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -16,20 +16,33 @@ import CommandPaletteWrapper from "./components/command-palette/CommandPaletteWr
 import ToastContainer from "./components/toast/ToastContainer";
 import MobileNav from "./components/mobile-nav/MobileNav";
 
-const aldrich = Aldrich({
-  weight: "400",
+const sfProDisplay = localFont({
+  src: [
+    { path: './fonts/SF Pro/SF-Pro-Display-Regular.otf', weight: '400', style: 'normal' },
+    { path: './fonts/SF Pro/SF-Pro-Display-Medium.otf', weight: '500', style: 'normal' },
+    { path: './fonts/SF Pro/SF-Pro-Display-Semibold.otf', weight: '600', style: 'normal' },
+    { path: './fonts/SF Pro/SF-Pro-Display-Bold.otf', weight: '700', style: 'normal' },
+    { path: './fonts/SF Pro/SF-Pro-Display-RegularItalic.otf', weight: '400', style: 'italic' },
+  ],
+  variable: "--font-sf-pro",
+  display: 'swap',
+});
+
+const sfMono = localFont({
+  src: [
+    { path: './fonts/SF Mono/SF-Mono-Regular.otf', weight: '400', style: 'normal' },
+    { path: './fonts/SF Mono/SF-Mono-Medium.otf', weight: '500', style: 'normal' },
+    { path: './fonts/SF Mono/SF-Mono-Semibold.otf', weight: '600', style: 'normal' },
+    { path: './fonts/SF Mono/SF-Mono-Bold.otf', weight: '700', style: 'normal' },
+  ],
+  variable: "--font-sf-mono",
+  display: 'swap',
+});
+
+const aldrich = localFont({
+  src: [{ path: './fonts/SF Pro/SF-Pro-Display-Bold.otf', weight: '700', style: 'normal' }],
   variable: "--font-aldrich",
-  subsets: ["latin"],
-});
-
-const archivo = Archivo({
-  variable: "--font-archivo",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -46,14 +59,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP&display=swap" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css2?family=Aldrich&display=swap" rel="stylesheet"></link>
-        <link href="https://fonts.googleapis.com/css2?family=Archivo&display=swap" rel="stylesheet"></link>
       </head>
       <body
-        className={`${aldrich.variable} ${archivo.variable} ${geistMono.variable}  antialiased`}
+        className={`${sfProDisplay.variable} ${sfMono.variable} ${aldrich.variable} antialiased`}
       >
         <AuthProvider>
           <SettingsProvider>

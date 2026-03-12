@@ -41,14 +41,14 @@ export async function handleVercel(code: string, request: Request) {
   const tokenResp = await fetch('https://api.vercel.com/oauth/access_token', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: JSON.stringify({
+    body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
       code,
       redirect_uri: redirectUri,
-    }),
+    }).toString(),
   });
 
   const tokenJson: VercelTokenResponse = await tokenResp.json();

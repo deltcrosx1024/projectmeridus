@@ -26,7 +26,7 @@ import { Analytics } from '@vercel/analytics/next';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-950 dark:to-black">
+    <div className="min-h-screen bg-black">
       <Analytics />
       {/* ===== HEADER COMPONENT ===== */}
       <Header />

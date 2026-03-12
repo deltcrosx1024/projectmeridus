@@ -19,19 +19,19 @@ interface StatCardProps {
 
 export default function StatCardComponent({ stat }: StatCardProps) {
   const colorMap = {
-    green: 'text-green-400',
-    orange: 'text-orange-400',
-    blue: 'text-blue-400',
-    purple: 'text-purple-400',
+    green: 'text-[#22c55e]',
+    orange: 'text-[#f59e0b]',
+    blue: 'text-[#0070F3]',
+    purple: 'text-[#a855f7]',
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-lg p-6 hover:bg-slate-800/80 transition-all">
+    <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-6 hover:border-[#555555] transition-all">
       {/* ===== STAT LABEL ===== */}
-      <div className="text-slate-400 text-sm font-semibold mb-2" style={{ fontFamily: 'var(--font-aldrich)' }}>{stat.label}</div>
+      <div className="text-[#A1A1AA] text-sm font-semibold mb-2">{stat.label}</div>
 
       {/* ===== STAT VALUE ===== */}
-      <div className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'var(--font-aldrich)' }}>{stat.value}</div>
+      <div className="text-4xl font-bold text-white mb-2">{stat.value}</div>
 
       {/* ===== STAT CHANGE ===== */}
       <div className={`text-sm ${colorMap[stat.changeColor]}`}>{stat.change}</div>

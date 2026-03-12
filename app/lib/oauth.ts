@@ -85,6 +85,7 @@ export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: 
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
+    response_type: 'code',
     scope: 'read write',
     ...(state && { state }),
   });
