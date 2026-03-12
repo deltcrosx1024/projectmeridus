@@ -126,6 +126,7 @@ export async function GET(request: Request) {
     return response;
   } catch (err: any) {
     console.error(`[OAuth Error] Service: ${service}`, err);
-    return NextResponse.json({ error: err?.message ?? 'Auth failed' }, { status: 500 });
+    const errorMessage = err?.message || err?.toString() || 'Auth failed';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
