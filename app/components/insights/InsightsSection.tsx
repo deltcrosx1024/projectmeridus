@@ -90,24 +90,101 @@ export default function InsightsSection() {
 
       {/* Activity Frequency Chart */}
       <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg mb-6 md:mb-8">
-        <h3 className="text-base md:text-lg font-semibold text-white mb-4 md:mb-6">
-          Activity Frequency (by day)
-        </h3>
-        <div className="flex justify-between items-end h-24 md:h-40 gap-1 md:gap-2">
-          {activityByDay.map(({ day, count }) => (
-            <div key={day} className="flex flex-col items-center flex-1">
-              <div className="w-full relative h-20 md:h-32 flex items-end">
-                <div 
-                  className="w-full bg-gradient-to-t from-[#0070F3] to-blue-400 rounded-t-md transition-all duration-300 min-h-[4px]"
-                  style={{ 
-                    height: `${Math.max((count / maxActivity) * 100, 4)}%`,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] md:text-xs text-[#A1A1AA] mt-1 md:mt-2">{day}</span>
-              <span className="text-[10px] md:text-xs text-[#666666]">{count}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-base md:text-lg font-semibold text-white">
+              Activity Frequency
+            </h3>
+            <p className="text-xs text-[#A1A1AA] mt-1">Commits by day of week</p>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#0070F3]"></div>
+              <span className="text-[#A1A1AA]">Commits</span>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#0070F3]/30"></div>
+              <span className="text-[#A1A1AA]">Average</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Bar Chart */}
+        <div className="relative">
+          {/* Background grid lines */}
+          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="w-full h-px bg-[#1a1a1a]" />
+            ))}
+          </div>
+          
+          <div className="relative flex justify-between items-end h-32 md:h-40 gap-2 md:gap-3 px-2">
+            {activityByDay.map(({ day, count }, index) => {
+              const heightPercent = maxActivity > 0 ? (count / maxActivity) * 100 : 0;
+              const avgActivity = activityByDay.reduce((sum, a) => sum + a.count, 0) / activityByDay.length || 0;
+              const avgHeightPercent = maxActivity > 0 ? (avgActivity / maxActivity) * 100 : 0;
+              
+              return (
+                <div key={day} className="flex flex-col items-center flex-1 group">
+                  {/* Count tooltip */}
+                  <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8">
+                    <span className="px-2 py-1 bg-[#1a1a1a] text-white text-xs rounded-md border border-[#333333] whitespace-nowrap">
+                      {count} commit{count !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  {/* Bar container */}
+                  <div className="w-full relative h-24 md:h-32 flex items-end justify-center">
+                    {/* Average line indicator */}
+                    <div 
+                      className="absolute w-full h-px bg-[#0070F3]/30 border-t border-dashed border-[#0070F3]/50"
+                      style={{ bottom: `${Math.max(avgHeightPercent, 4)}%` }}
+                    />
+                    
+                    {/* Main bar */}
+                    <div 
+                      className="w-full max-w-[40px] relative rounded-t-md transition-all duration-500 group-hover:shadow-[0_0_20px_rgba(0,112,243,0.3)]"
+                      style={{ 
+                        height: `${Math.max(heightPercent, 4)}%`,
+                      }}
+                    >
+                      {/* Gradient fill */}
+                      <div 
+                        className="absolute inset-0 rounded-t-md"
+                        style={{
+                          background: `linear-gradient(180deg, #0070F3 0%, rgba(0,112,243,0.4) 100%)`,
+                        }}
+                      />
+                      {/* Animated shine effect */}
+                      <div className="absolute inset-0 rounded-t-md bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    </div>
+                  </div>
+                  
+                  {/* Day label */}
+                  <div className="mt-3 text-center">
+                    <span className="text-xs font-medium text-[#A1A1AA] group-hover:text-white transition-colors">{day}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Summary stats */}
+        <div className="mt-6 pt-4 border-t border-[#1a1a1a] flex flex-wrap justify-between items-center gap-4">
+          <div className="text-xs text-[#666666]">
+            Total: <span className="text-white font-medium">{commits.length}</span> commits
+          </div>
+          <div className="text-xs text-[#666666]">
+            Busiest: <span className="text-[#0070F3] font-medium">
+              {activityByDay.reduce((max, a) => a.count > max.count ? a : max, activityByDay[0])?.day || 'N/A'}
+            </span>
+          </div>
+          <div className="text-xs text-[#666666]">
+            Avg/day: <span className="text-white font-medium">
+              {(activityByDay.reduce((sum, a) => sum + a.count, 0) / activityByDay.filter(a => a.count > 0).length || 0).toFixed(1)}
+            </span>
+          </div>
         </div>
       </div>
 
