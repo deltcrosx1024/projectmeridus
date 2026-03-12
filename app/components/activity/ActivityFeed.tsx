@@ -153,7 +153,7 @@ export default function ActivityFeed() {
             >
               Activity Feed
             </h2>
-            <p className="text-slate-400 text-sm mt-1">Recent activity across your repositories</p>
+            <p className="text-[#A1A1AA] text-sm mt-1">Recent activity across your repositories</p>
           </div>
 
           {/* Filter */}
@@ -165,7 +165,7 @@ export default function ActivityFeed() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
                   filter === type 
                     ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    : 'bg-[#0a0a0a] text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-white'
                 }`}
               >
                 {type === 'all' ? 'All' : type}
@@ -177,7 +177,7 @@ export default function ActivityFeed() {
         {/* Timeline */}
         <div className="relative">
           {/* Timeline line */}
-          <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-slate-700 hidden sm:block" />
+          <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[#1a1a1a] hidden sm:block" />
 
           <div className="space-y-4">
             {filteredActivities.map((activity, index) => (
@@ -191,7 +191,7 @@ export default function ActivityFeed() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0 bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-800 transition-colors">
+                <div className="flex-1 min-w-0 bg-[#0a0a0a]/50 border border-[#333333] rounded-lg p-4 hover:bg-[#0a0a0a] transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <img 
@@ -200,25 +200,25 @@ export default function ActivityFeed() {
                         className="w-6 h-6 rounded-full"
                       />
                       <span className="font-medium text-white">{activity.actor.login}</span>
-                      <span className="text-slate-500">in</span>
+                      <span className="text-[#666666]">in</span>
                       <span className="text-blue-400">{activity.repo}</span>
                     </div>
-                    <span className="text-xs text-slate-500 flex-shrink-0">
+                    <span className="text-xs text-[#666666] flex-shrink-0">
                       {formatTimeAgo(activity.timestamp)}
                     </span>
                   </div>
                   
-                  <p className="mt-2 text-slate-300">
+                  <p className="mt-2 text-white">
                     {activity.message}
                   </p>
 
                   {/* Action buttons */}
                   <div className="mt-3 flex gap-2">
-                    <button className="text-xs text-slate-400 hover:text-white transition-colors">
+                    <button className="text-xs text-[#A1A1AA] hover:text-white transition-colors">
                       View details
                     </button>
-                    <span className="text-slate-600">•</span>
-                    <button className="text-xs text-slate-400 hover:text-white transition-colors">
+                    <span className="text-[#444444]">•</span>
+                    <button className="text-xs text-[#A1A1AA] hover:text-white transition-colors">
                       {activity.repo}
                     </button>
                   </div>
@@ -228,7 +228,7 @@ export default function ActivityFeed() {
           </div>
 
           {filteredActivities.length === 0 && (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-[#666666]">
               <p>No activities found</p>
             </div>
           )}
@@ -237,7 +237,7 @@ export default function ActivityFeed() {
         {/* Load more */}
         {filteredActivities.length > 0 && (
           <div className="mt-6 text-center">
-            <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm">
+            <button className="px-4 py-2 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors text-sm">
               Load more activity
             </button>
           </div>

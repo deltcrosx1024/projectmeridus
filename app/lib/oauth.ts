@@ -111,12 +111,11 @@ export function handleVercelLogin(clientId: string): void {
   document.cookie = `vercel_code_verifier=${codeVerifier}; path=/; max-age=600`;
   document.cookie = `vercel_nonce=${nonce}; path=/; max-age=600`;
   
-  // Build authorization URL with PKCE
+  // Build authorization URL with PKCE (no scope needed for Sign in with Vercel)
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'openid profile email',
     state,
     nonce,
     code_challenge: codeChallenge,

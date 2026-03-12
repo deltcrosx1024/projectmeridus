@@ -104,7 +104,7 @@ function getIconByType(type: Notification['type']) {
       );
     default:
       return (
-        <div className="w-8 h-8 rounded-full bg-slate-600/20 text-slate-400 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-slate-600/20 text-[#A1A1AA] flex items-center justify-center">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -146,7 +146,7 @@ export default function NotificationCenter() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-300 hover:text-white transition-colors"
+        className="relative p-2 text-white hover:text-white transition-colors"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -159,9 +159,9 @@ export default function NotificationCenter() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-96 bg-[#0a0a0a] border border-[#333333] rounded-xl shadow-2xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#333333]">
             <h3 className="font-semibold text-white">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
@@ -175,7 +175,7 @@ export default function NotificationCenter() {
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
-                  className="text-xs text-slate-400 hover:text-slate-300"
+                  className="text-xs text-[#A1A1AA] hover:text-white"
                 >
                   Clear
                 </button>
@@ -186,7 +186,7 @@ export default function NotificationCenter() {
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-slate-500">
+              <div className="px-4 py-8 text-center text-[#666666]">
                 <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
@@ -197,24 +197,24 @@ export default function NotificationCenter() {
                 <div
                   key={notification.id}
                   onClick={() => markAsRead(notification.id)}
-                  className={`flex gap-3 px-4 py-3 border-b border-slate-700/50 cursor-pointer hover:bg-slate-700/50 transition-colors ${
-                    !notification.read ? 'bg-slate-700/20' : ''
+                  className={`flex gap-3 px-4 py-3 border-b border-[#333333]/50 cursor-pointer hover:bg-[#1a1a1a]/50 transition-colors ${
+                    !notification.read ? 'bg-[#1a1a1a]/20' : ''
                   }`}
                 >
                   {getIconByType(notification.type)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className={`text-sm font-medium ${!notification.read ? 'text-white' : 'text-slate-300'}`}>
+                      <h4 className={`text-sm font-medium ${!notification.read ? 'text-white' : 'text-white'}`}>
                         {notification.title}
                       </h4>
                       {!notification.read && (
                         <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-400 mt-0.5 line-clamp-2">
+                    <p className="text-sm text-[#A1A1AA] mt-0.5 line-clamp-2">
                       {notification.message}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-[#666666] mt-1">
                       {formatTimeAgo(notification.timestamp)}
                       {notification.data?.repo && ` • ${notification.data.repo}`}
                     </p>
@@ -225,8 +225,8 @@ export default function NotificationCenter() {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2 border-t border-slate-700 bg-slate-800/50">
-            <button className="text-xs text-slate-400 hover:text-white w-full text-center py-1">
+          <div className="px-4 py-2 border-t border-[#333333] bg-[#0a0a0a]/50">
+            <button className="text-xs text-[#A1A1AA] hover:text-white w-full text-center py-1">
               View all notifications
             </button>
           </div>
