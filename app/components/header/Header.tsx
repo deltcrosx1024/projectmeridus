@@ -35,7 +35,7 @@ export default function Header() {
               alt="Meridus Logo"
               className="w-8 h-8"
             />
-            <span className="text-xl font-bold text-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>MERIDUS</span>
+            <span className="text-xl font-bold text-white" style={{ fontFamily: 'var(--font-aldrich)' }}>MERIDUS</span>
           </a>
 
           {/* ===== DESKTOP NAVIGATION ===== */}

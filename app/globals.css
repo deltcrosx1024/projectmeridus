@@ -17,9 +17,9 @@
   --color-card-border: var(--card-border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, monospace;
-  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-sf-pro), -apple-system, sans-serif;
+  --font-mono: var(--font-sf-mono), monospace;
+  --font-heading: var(--font-sf-pro), -apple-system, sans-serif;
 }
 
 * {
@@ -28,6 +28,11 @@
 
 body {
   background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   min-height: 100vh;
