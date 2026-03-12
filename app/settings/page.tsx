@@ -15,10 +15,11 @@ interface PendingChanges {
 }
 
 export default function SettingsPage() {
-  const { githubUser, discordUser, logout } = useAuth();
+  const { githubUser, discordUser, vercelUser, logout } = useAuth();
   const { settings, updateSettings, isLoading: settingsLoading } = useSettingsContext();
   const [showGitHubConfirm, setShowGitHubConfirm] = useState(false);
   const [showDiscordConfirm, setShowDiscordConfirm] = useState(false);
+  const [showVercelConfirm, setShowVercelConfirm] = useState(false);
   const [showClearDataConfirm, setShowClearDataConfirm] = useState(false);
   
   const [localSettings, setLocalSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
@@ -216,6 +217,48 @@ export default function SettingsPage() {
                   <div className="flex gap-2">
                     <button onClick={() => { logout('discord'); setShowDiscordConfirm(false); }} className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Yes, Disconnect</button>
                     <button onClick={() => setShowDiscordConfirm(false)} className="px-3 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Vercel Section */}
+            <div className="pt-6 border-t border-[#333333]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 76 76" fill="currentColor">
+                    <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
+                  </svg>
+                  <div>
+                    <h3 className="font-semibold text-white">Vercel</h3>
+                    {vercelUser ? (
+                      <p className="text-sm text-[#A1A1AA]">Connected as {vercelUser.username}</p>
+                    ) : (
+                      <p className="text-sm text-[#A1A1AA]">Not connected</p>
+                    )}
+                  </div>
+                </div>
+                {vercelUser ? (
+                  <button onClick={() => setShowVercelConfirm(true)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">Disconnect</button>
+                ) : (
+                  <button disabled className="px-4 py-2 bg-[#333333] text-[#A1A1AA] rounded-lg cursor-not-allowed">Not Connected</button>
+                )}
+              </div>
+
+              {vercelUser && (
+                <div className="grid grid-cols-3 gap-4 text-sm text-[#A1A1AA]">
+                  <div><p className="text-[#666666]">Username</p><p className="text-white font-semibold">{vercelUser.username}</p></div>
+                  <div><p className="text-[#666666]">Email</p><p className="text-white font-semibold">{vercelUser.email}</p></div>
+                  <div><p className="text-[#666666]">User ID</p><p className="text-white font-semibold">{vercelUser.userId}</p></div>
+                </div>
+              )}
+
+              {showVercelConfirm && (
+                <div className="mt-4 p-4 bg-red-900/20 border border-red-900/50 rounded-lg">
+                  <p className="text-white mb-3">Are you sure you want to disconnect Vercel?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { logout('vercel'); setShowVercelConfirm(false); }} className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Yes, Disconnect</button>
+                    <button onClick={() => setShowVercelConfirm(false)} className="px-3 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded">Cancel</button>
                   </div>
                 </div>
               )}
