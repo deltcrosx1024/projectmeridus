@@ -22,6 +22,7 @@ import ReposSection from '@/app/components/repos/ReposSection';
 import IssuesSection from '@/app/components/issues/IssuesSection';
 import PullRequestsSection from '@/app/components/pull-requests/PullRequestsSection';
 import ActivityFeed from '@/app/components/activity/ActivityFeed';
+import VercelDeployments from '@/app/components/vercel/VercelDeployments';
 import { Analytics } from '@vercel/analytics/next';
 
 export default function Home() {
@@ -53,6 +54,9 @@ export default function Home() {
 
         {/* ===== ACTIVITY FEED SECTION ===== */}
         <ActivityFeed />
+
+        {/* ===== VERCEL DEPLOYMENTS SECTION ===== */}
+        <VercelDeployments />
 
         {/* ===== CTA SECTION COMPONENT ===== */}
         <CTASection />
