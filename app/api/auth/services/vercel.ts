@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { linkVercelAccount } from '@/app/lib/userLinks';
 
 const VERCEL_TOKEN_URL = 'https://api.vercel.com/login/oauth/token';
-const VERCEL_USER_URL = 'https://api.vercel.com/v2/user';
+const VERCEL_USER_URL = 'https://api.vercel.com/v6/user';
 
 interface VercelTokenResponse {
   access_token?: string;
