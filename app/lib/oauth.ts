@@ -86,7 +86,7 @@ export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: 
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'read write',
+    scope: 'deployment read deployment write project read project write',
     ...(state && { state }),
   });
   return `https://vercel.com/oauth/authorize?${params}`;
@@ -129,6 +129,7 @@ export async function handleVercelLogin(clientId: string): Promise<void> {
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
+    scope: 'deployment read deployment write project read project write',
   });
   
   window.location.href = `https://vercel.com/oauth/authorize?${params}`;
