@@ -100,16 +100,21 @@ export function handleVercelLogin(clientId: string): void {
   const redirectUri = window.location.origin + '/api/auth/callback?service=vercel';
   const state = generateState();
   
-  // Generate code verifier and challenge for PKCE
-  const codeVerifier = generateState() + generateState();
-  const codeChallenge = btoa(codeVerifier).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '').slice(0, 43);
-  const nonce = generateState();
+  // Generate code verifier (URL-safe characters only, 43-128 chars)
+  const codeVerifier = generateState() + generateState() + generateState();
+  // Base64URL encode for code challenge
+  const codeChallenge = btoa(codeVerifier)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
   
-  // Store state, nonce, and code verifier in cookies
-  document.cookie = `oauth_state=${state}; path=/; max-age=600`;
-  document.cookie = `oauth_service=vercel; path=/; max-age=600`;
-  document.cookie = `vercel_code_verifier=${codeVerifier}; path=/; max-age=600`;
-  document.cookie = `vercel_nonce=${nonce}; path=/; max-age=600`;
+  console.log('[Vercel] Code verifier length:', codeVerifier.length);
+  console.log('[Vercel] Code challenge length:', codeChallenge.length);
+  
+  // Store state and code verifier in cookies (encodeURIComponent to handle special chars)
+  document.cookie = `oauth_state=${encodeURIComponent(state)}; path=/; max-age=600; SameSite=Lax`;
+  document.cookie = `oauth_service=vercel; path=/; max-age=600; SameSite=Lax`;
+  document.cookie = `vercel_code_verifier=${encodeURIComponent(codeVerifier)}; path=/; max-age=600; SameSite=Lax`;
   
   // Build authorization URL with PKCE
   const params = new URLSearchParams({

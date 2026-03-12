@@ -10,32 +10,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse cookies
-    const cookies = Object.fromEntries(
-      cookieHeader.split('; ').map(c => {
-        const [key, ...value] = c.split('=');
-        return [key, value.join('=')];
-      })
-    );
+    // Parse cookies properly
+    const cookieMap = new Map<string, string>();
+    cookieHeader.split(';').forEach(cookie => {
+      const [key, ...valueParts] = cookie.trim().split('=');
+      if (key) {
+        cookieMap.set(key, valueParts.join('='));
+      }
+    });
 
     // Try to get user ID from either GitHub or Discord
     let userId: string | null = null;
     
-    if (cookies.github_user) {
+    const githubUserCookie = cookieMap.get('github_user');
+    if (githubUserCookie) {
       try {
-        const ghUser = JSON.parse(decodeURIComponent(cookies.github_user));
+        const ghUser = JSON.parse(decodeURIComponent(githubUserCookie));
         userId = `github:${ghUser.id}`;
-      } catch {
-        // Invalid cookie
+      } catch (e) {
+        console.error('[Settings] Failed to parse github_user cookie:', e);
       }
     }
     
-    if (!userId && cookies.discord_user) {
+    const discordUserCookie = cookieMap.get('discord_user');
+    if (!userId && discordUserCookie) {
       try {
-        const discordUser = JSON.parse(decodeURIComponent(cookies.discord_user));
+        const discordUser = JSON.parse(decodeURIComponent(discordUserCookie));
         userId = `discord:${discordUser.id}`;
-      } catch {
-        // Invalid cookie
+      } catch (e) {
+        console.error('[Settings] Failed to parse discord_user cookie:', e);
       }
     }
 
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[Settings API] GET error:', error);
     return NextResponse.json(
-      { error: 'Failed to get settings' },
+      { error: 'Failed to get settings', details: String(error) },
       { status: 500 }
     );
   }
