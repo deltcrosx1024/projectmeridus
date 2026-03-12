@@ -1,45 +1,202 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card-bg: #0a0a0a;
+  --card-border: #333333;
+  --muted: #A1A1AA;
+  --accent: #0070F3;
+  --accent-hover: #0060df;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-archivo);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-aldrich);
+  --color-card: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
-/* Headings and topics use Aldrich */
-h1, h2, h3, h4, h5, h6,
-.font-heading,
-.heading {
-  font-family: var(--font-aldrich), serif;
+/* Grid pattern overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(rgba(17, 17, 17, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 17, 17, 0.5) 1px, transparent 1px);
+  background-size: 50px 50px;
+  z-index: 0;
 }
 
-/* Code uses Geist Mono */
-code, pre, .font-code {
-  font-family: var(--font-geist-mono), monospace;
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
-/* Content text uses Archivo */
-p, span, div, .font-content {
-  font-family: var(--font-archivo), sans-serif;
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+/* Body text */
+p, span, div, li, td, th {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Links */
+a {
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #ffffff;
+}
+
+/* Bento box containers */
+.bento {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+/* Primary button */
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+/* Secondary button */
+.btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  border-color: var(--muted);
+  color: #ffffff;
+}
+
+/* Status indicators */
+.status-success {
+  color: #22c55e;
+}
+
+.status-error {
+  color: #ef4444;
+}
+
+.status-warning {
+  color: #f59e0b;
+}
+
+.status-info {
+  color: var(--accent);
+}
+
+/* Input fields */
+input, textarea, select {
+  background: #0a0a0a;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  color: #ffffff;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input::placeholder, textarea::placeholder {
+  color: #52525b;
+}
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #A1A1AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
 }

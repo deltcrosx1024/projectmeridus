@@ -5,7 +5,7 @@
  */
 
 import type { Metadata } from "next";
-import { Geist_Mono, Aldrich, Archivo } from "next/font/google";
+import { Geist_Mono, Aldrich, Archivo, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -15,6 +15,12 @@ import { SWRProvider } from "./components/swr-provider";
 import CommandPaletteWrapper from "./components/command-palette/CommandPaletteWrapper";
 import ToastContainer from "./components/toast/ToastContainer";
 import MobileNav from "./components/mobile-nav/MobileNav";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 const aldrich = Aldrich({
   weight: "400",
@@ -51,9 +57,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP&display=swap" rel="stylesheet"/>
         <link href="https://fonts.googleapis.com/css2?family=Aldrich&display=swap" rel="stylesheet"></link>
         <link href="https://fonts.googleapis.com/css2?family=Archivo&display=swap" rel="stylesheet"></link>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></link>
       </head>
       <body
-        className={`${aldrich.variable} ${archivo.variable} ${geistMono.variable}  antialiased`}
+        className={`${inter.variable} ${aldrich.variable} ${archivo.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
           <SettingsProvider>

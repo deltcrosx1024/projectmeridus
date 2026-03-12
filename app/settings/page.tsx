@@ -110,50 +110,48 @@ export default function SettingsPage() {
   };
 
   return settingsLoading ? (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-black">
       <Header />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-400">Loading settings...</p>
+            <div className="w-8 h-8 border-4 border-[#0070F3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-[#A1A1AA]">Loading settings...</p>
           </div>
         </div>
       </main>
       <Footer />
     </div>
   ) : (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-black">
       <Header />
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12">
           <h1 
             className="text-4xl font-bold text-white mb-2"
-            style={{ fontFamily: 'var(--font-aldrich)' }}
           >
             Settings
           </h1>
-          <p className="text-slate-400" style={{ fontFamily: 'var(--font-archivo)' }}>
+          <p className="text-[#A1A1AA]">
             Manage your account connections and preferences
           </p>
         </div>
 
         <div className="space-y-6">
           {/* Connected Services */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+          <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-6">
             <h2 
               className="text-xl font-bold text-white mb-6"
-              style={{ fontFamily: 'var(--font-aldrich)' }}
             >
               Connected Services
             </h2>
 
             {/* GitHub Section */}
-            <div className="mb-6 pb-6 border-b border-slate-700">
+            <div className="mb-6 pb-6 border-b border-[#333333]">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-6 h-6 text-[#A1A1AA]" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.545 2.91 1.187.092-.923.35-1.545.636-1.9-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.025A9.578 9.578 0 0110 4.817c.85.004 1.705.114 2.504.336 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.48C17.137 18.195 20 14.44 20 10.017 20 4.484 15.522 0 10 0z" clipRule="evenodd" />
                   </svg>
                   <div>
