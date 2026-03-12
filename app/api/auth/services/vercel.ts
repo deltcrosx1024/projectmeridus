@@ -105,6 +105,33 @@ export async function handleVercel(code: string, request: Request) {
 
   console.log('[Vercel OAuth] User from ID token:', { vercelUsername, vercelEmail, vercelUserId });
 
+  // Fetch user's teams to get team ID
+  let vercelTeamId = '';
+  let vercelTeamSlug = '';
+  try {
+    const teamsRes = await fetch('https://api.vercel.com/v6/teams', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    
+    if (teamsRes.ok) {
+      const teamsData = await teamsRes.json();
+      if (teamsData.teams && teamsData.teams.length > 0) {
+        // Get the first team (usually the user's main team)
+        vercelTeamId = teamsData.teams[0].id;
+        vercelTeamSlug = teamsData.teams[0].slug;
+        console.log('[Vercel OAuth] Found team:', { vercelTeamId, vercelTeamSlug });
+      } else {
+        console.log('[Vercel OAuth] No teams found for user');
+      }
+    } else {
+      console.error('[Vercel OAuth] Failed to fetch teams:', await teamsRes.text());
+    }
+  } catch (err) {
+    console.error('[Vercel OAuth] Error fetching teams:', err);
+  }
+
   const res = NextResponse.redirect(new URL('/', request.url));
 
   // Store tokens
@@ -130,6 +157,8 @@ export async function handleVercel(code: string, request: Request) {
     username: vercelUsername,
     email: vercelEmail,
     userId: vercelUserId,
+    teamId: vercelTeamId,
+    teamSlug: vercelTeamSlug,
   }), {
     httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
@@ -147,7 +176,7 @@ export async function handleVercel(code: string, request: Request) {
       
       await linkVercelAccount(discordUser.id, accessToken, {
         vercelUsername,
-        vercelTeamId: '',
+        vercelTeamId,
       });
       
       console.log(`[Vercel OAuth] Linked Vercel to Discord ${discordUser.id}`);

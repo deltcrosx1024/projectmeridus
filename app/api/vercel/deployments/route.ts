@@ -6,28 +6,58 @@ const VERCEL_API_URL = 'https://api.vercel.com/v6';
 export async function GET(request: Request) {
   const cookieStore = await cookies();
   const vercelToken = cookieStore.get('vercel_token')?.value;
+  const vercelUserCookie = cookieStore.get('vercel_user')?.value;
 
   if (!vercelToken) {
     return NextResponse.json({ error: 'Not authenticated with Vercel', needsAuth: true }, { status: 401 });
+  }
+
+  // Get team ID from stored user data
+  let teamId = '';
+  if (vercelUserCookie) {
+    try {
+      const userData = JSON.parse(vercelUserCookie);
+      teamId = userData.teamId || '';
+    } catch (e) {
+      console.error('[Vercel] Failed to parse vercel_user cookie:', e);
+    }
   }
 
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get('limit') || '10');
 
   try {
-    const deploymentsRes = await fetch(
-      `${VERCEL_API_URL}/deployments?limit=${limit}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${vercelToken}`,
-        },
-      }
-    );
+    let apiUrl = `${VERCEL_API_URL}/deployments?limit=${limit}`;
+    if (teamId) {
+      apiUrl += `&teamId=${teamId}`;
+    }
+    console.log('[Vercel] Fetching deployments from:', apiUrl);
+
+    const deploymentsRes = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${vercelToken}`,
+      },
+    });
 
     if (!deploymentsRes.ok) {
-      const error = await deploymentsRes.text();
-      console.error('[Vercel] Deployments error:', error);
-      return NextResponse.json({ error: 'Failed to fetch deployments' }, { status: deploymentsRes.status });
+      const errorText = await deploymentsRes.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: { message: errorText } };
+      }
+      
+      console.error('[Vercel] Deployments error:', errorData);
+      
+      if (errorData.error?.code === 'forbidden' || errorData.error?.invalidToken) {
+        return NextResponse.json({ 
+          error: 'Vercel authorization expired. Please reconnect your Vercel account.',
+          needsReauth: true 
+        }, { status: 403 });
+      }
+      
+      return NextResponse.json({ error: errorData.error?.message || 'Failed to fetch deployments' }, { status: deploymentsRes.status });
     }
 
     const deployments = await deploymentsRes.json();
