@@ -157,9 +157,9 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="font-semibold text-white">GitHub</h3>
                     {githubUser ? (
-                      <p className="text-sm text-slate-400">Connected as @{githubUser.login}</p>
+                      <p className="text-sm text-[#A1A1AA]">Connected as @{githubUser.login}</p>
                     ) : (
-                      <p className="text-sm text-slate-400">Not connected</p>
+                      <p className="text-sm text-[#A1A1AA]">Not connected</p>
                     )}
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                 ) : (
                   <button
                     disabled
-                    className="px-4 py-2 bg-slate-700 text-slate-400 rounded-lg cursor-not-allowed"
+                    className="px-4 py-2 bg-[#333333] text-[#A1A1AA] rounded-lg cursor-not-allowed"
                   >
                     Not Connected
                   </button>
@@ -181,17 +181,17 @@ export default function SettingsPage() {
               </div>
 
               {githubUser && (
-                <div className="grid grid-cols-3 gap-4 text-sm text-slate-400">
+                <div className="grid grid-cols-3 gap-4 text-sm text-[#A1A1AA]">
                   <div>
-                    <p className="text-slate-500">Repositories</p>
+                    <p className="text-[#666666]">Repositories</p>
                     <p className="text-white font-semibold">{githubUser.public_repos}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Followers</p>
+                    <p className="text-[#666666]">Followers</p>
                     <p className="text-white font-semibold">{githubUser.followers}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">User ID</p>
+                    <p className="text-[#666666]">User ID</p>
                     <p className="text-white font-semibold">{githubUser.id}</p>
                   </div>
                 </div>
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => setShowGitHubConfirm(false)}
-                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                      className="px-3 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded transition-colors"
                     >
                       Cancel
                     </button>
@@ -231,9 +231,9 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="font-semibold text-white">Discord</h3>
                     {discordUser ? (
-                      <p className="text-sm text-slate-400">Connected as {discordUser.username}</p>
+                      <p className="text-sm text-[#A1A1AA]">Connected as {discordUser.username}</p>
                     ) : (
-                      <p className="text-sm text-slate-400">Not connected</p>
+                      <p className="text-sm text-[#A1A1AA]">Not connected</p>
                     )}
                   </div>
                 </div>
@@ -247,22 +247,26 @@ export default function SettingsPage() {
                 ) : (
                   <button
                     disabled
-                    className="px-4 py-2 bg-slate-700 text-slate-400 rounded-lg cursor-not-allowed"
+                    className="px-4 py-2 bg-[#333333] text-[#A1A1AA] rounded-lg cursor-not-allowed"
                   >
                     Not Connected
                   </button>
                 )}
               </div>
 
-              {discordUser && (
-                <div className="grid grid-cols-2 gap-4 text-sm text-slate-400">
+              {discordUser ? (
+                <div className="grid grid-cols-3 gap-4 text-sm text-[#A1A1AA]">
                   <div>
-                    <p className="text-slate-500">Username</p>
+                    <p className="text-[#666666]">Username</p>
                     <p className="text-white font-semibold">{discordUser.username}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">User ID</p>
+                    <p className="text-[#666666]">User ID</p>
                     <p className="text-white font-semibold">{discordUser.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#666666]">Avatar</p>
+                    <p className="text-white font-semibold">✓ Connected</p>
                   </div>
                 </div>
               )}
@@ -282,7 +286,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => setShowDiscordConfirm(false)}
-                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                      className="px-3 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded transition-colors"
                     >
                       Cancel
                     </button>
@@ -293,7 +297,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Notifications */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+          <div className="bg-[#0a0a0a]/80 border border-[#333333] rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 
@@ -302,7 +306,7 @@ export default function SettingsPage() {
                 >
                   Notifications
                 </h2>
-                <p className="text-sm text-slate-400 mt-1">Configure how you receive updates</p>
+                <p className="text-sm text-[#A1A1AA] mt-1">Configure how you receive updates</p>
               </div>
               <div className="flex items-center gap-3">
                 {getSectionStatus('notifications')}
@@ -327,15 +331,15 @@ export default function SettingsPage() {
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]/50">
                 <div>
                   <p className="text-white font-medium">Webhook Notifications</p>
-                  <p className="text-sm text-slate-500">Receive Discord alerts for subscribed events</p>
+                  <p className="text-sm text-[#666666]">Receive Discord alerts for subscribed events</p>
                 </div>
                 <button
                   onClick={() => handleLocalChange('notifications', 'webhookNotifications', !localSettings.webhookNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    localSettings.webhookNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.webhookNotifications ? 'bg-blue-600' : 'bg-[#1a1a1a]'
                   }`}
                 >
                   <span 
@@ -346,15 +350,15 @@ export default function SettingsPage() {
                 </button>
               </div>
               
-              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]/50">
                 <div>
                   <p className="text-white font-medium">Issue Alerts</p>
-                  <p className="text-sm text-slate-500">Get notified when new issues are created</p>
+                  <p className="text-sm text-[#666666]">Get notified when new issues are created</p>
                 </div>
                 <button
                   onClick={() => handleLocalChange('notifications', 'issueAlerts', !localSettings.issueAlerts)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    localSettings.issueAlerts ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.issueAlerts ? 'bg-blue-600' : 'bg-[#1a1a1a]'
                   }`}
                 >
                   <span 
@@ -368,12 +372,12 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-white font-medium">Commit Notifications</p>
-                  <p className="text-sm text-slate-500">Receive updates on new commits</p>
+                  <p className="text-sm text-[#666666]">Receive updates on new commits</p>
                 </div>
                 <button
                   onClick={() => handleLocalChange('notifications', 'commitNotifications', !localSettings.commitNotifications)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    localSettings.commitNotifications ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.commitNotifications ? 'bg-blue-600' : 'bg-[#1a1a1a]'
                   }`}
                 >
                   <span 
@@ -387,7 +391,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Repository Preferences */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+          <div className="bg-[#0a0a0a]/80 border border-[#333333] rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 
@@ -396,7 +400,7 @@ export default function SettingsPage() {
                 >
                   Repository Preferences
                 </h2>
-                <p className="text-sm text-slate-400 mt-1">Customize how repositories are displayed</p>
+                <p className="text-sm text-[#A1A1AA] mt-1">Customize how repositories are displayed</p>
               </div>
               <div className="flex items-center gap-3">
                 {getSectionStatus('repository')}
@@ -421,15 +425,15 @@ export default function SettingsPage() {
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]/50">
                 <div>
                   <p className="text-white font-medium">Default View</p>
-                  <p className="text-sm text-slate-500">Choose how repositories are displayed</p>
+                  <p className="text-sm text-[#666666]">Choose how repositories are displayed</p>
                 </div>
                 <select
                   value={localSettings.defaultView}
                   onChange={(e) => handleLocalChange('repository', 'defaultView', e.target.value)}
-                  className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 bg-[#333333] border border-[#444444] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                 >
                   <option value="grid">Grid</option>
                   <option value="list">List</option>
@@ -437,15 +441,15 @@ export default function SettingsPage() {
                 </select>
               </div>
               
-              <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]/50">
                 <div>
                   <p className="text-white font-medium">Auto Refresh</p>
-                  <p className="text-sm text-slate-500">Automatically refresh repository data</p>
+                  <p className="text-sm text-[#666666]">Automatically refresh repository data</p>
                 </div>
                 <button
                   onClick={() => handleLocalChange('repository', 'autoRefresh', !localSettings.autoRefresh)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
-                    localSettings.autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
+                    localSettings.autoRefresh ? 'bg-blue-600' : 'bg-[#1a1a1a]'
                   }`}
                 >
                   <span 
@@ -460,12 +464,12 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-white font-medium">Refresh Interval</p>
-                    <p className="text-sm text-slate-500">How often to refresh data</p>
+                    <p className="text-sm text-[#666666]">How often to refresh data</p>
                   </div>
                   <select
                     value={localSettings.refreshInterval}
                     onChange={(e) => handleLocalChange('repository', 'refreshInterval', parseInt(e.target.value))}
-                    className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                    className="px-3 py-2 bg-[#333333] border border-[#444444] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option value={1}>1 minute</option>
                     <option value={5}>5 minutes</option>
@@ -479,7 +483,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Appearance */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+          <div className="bg-[#0a0a0a]/80 border border-[#333333] rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 
@@ -488,7 +492,7 @@ export default function SettingsPage() {
                 >
                   Appearance
                 </h2>
-                <p className="text-sm text-slate-400 mt-1">Customize the look and feel</p>
+                <p className="text-sm text-[#A1A1AA] mt-1">Customize the look and feel</p>
               </div>
               <div className="flex items-center gap-3">
                 {getSectionStatus('appearance')}
@@ -513,12 +517,12 @@ export default function SettingsPage() {
             </div>
             
             {/* Theme Selector */}
-            <div className="flex items-center justify-between py-3 border-b border-slate-700/50">
+            <div className="flex items-center justify-between py-3 border-b border-[#333333]/50">
               <div>
                 <p className="text-white font-medium">Theme</p>
-                <p className="text-sm text-slate-500">Choose your preferred color scheme</p>
+                <p className="text-sm text-[#666666]">Choose your preferred color scheme</p>
               </div>
-              <div className="flex bg-slate-700 rounded-lg p-1">
+              <div className="flex bg-[#333333] rounded-lg p-1">
                 {(['dark', 'light', 'system'] as const).map((themeOption) => (
                   <button
                     key={themeOption}
@@ -526,7 +530,7 @@ export default function SettingsPage() {
                     className={`px-3 py-1.5 text-sm rounded-md capitalize transition-colors ${
                       localSettings.theme === themeOption
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-400 hover:text-white'
+                        : 'text-[#A1A1AA] hover:text-white'
                     }`}
                   >
                     {themeOption}
@@ -538,12 +542,12 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between py-3">
               <div>
                 <p className="text-white font-medium">Compact Mode</p>
-                <p className="text-sm text-slate-500">Show more content with less spacing</p>
+                <p className="text-sm text-[#666666]">Show more content with less spacing</p>
               </div>
               <button
                 onClick={() => handleLocalChange('appearance', 'compactMode', !localSettings.compactMode)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  localSettings.compactMode ? 'bg-blue-600' : 'bg-slate-600'
+                  localSettings.compactMode ? 'bg-blue-600' : 'bg-[#1a1a1a]'
                 }`}
               >
                 <span 
@@ -556,37 +560,37 @@ export default function SettingsPage() {
           </div>
 
           {/* API Access */}
-          <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+          <div className="bg-[#0a0a0a]/80 border border-[#333333] rounded-lg p-6">
             <h2 
               className="text-xl font-bold text-white mb-4"
               style={{ fontFamily: 'var(--font-aldrich)' }}
             >
               API Access
             </h2>
-            <p className="text-slate-400 mb-4" style={{ fontFamily: 'var(--font-archivo)' }}>
+            <p className="text-[#A1A1AA] mb-4" style={{ fontFamily: 'var(--font-archivo)' }}>
               Your API keys are securely stored and used for authenticated requests only.
             </p>
             <div className="space-y-3 text-sm">
-              <div className="p-3 bg-slate-700/50 rounded flex items-center justify-between">
+              <div className="p-3 bg-[#333333]/50 rounded flex items-center justify-between">
                 <div>
                   <p className="text-slate-300 font-medium">GitHub API</p>
-                  <p className="text-slate-500 text-xs">Token stored securely in httpOnly cookie</p>
+                  <p className="text-[#666666] text-xs">Token stored securely in httpOnly cookie</p>
                 </div>
                 {githubUser ? (
                   <span className="text-green-400 text-xs px-2 py-1 bg-green-900/30 rounded">Active</span>
                 ) : (
-                  <span className="text-slate-500 text-xs px-2 py-1 bg-slate-700 rounded">Not Connected</span>
+                  <span className="text-[#666666] text-xs px-2 py-1 bg-[#333333] rounded">Not Connected</span>
                 )}
               </div>
-              <div className="p-3 bg-slate-700/50 rounded flex items-center justify-between">
+              <div className="p-3 bg-[#333333]/50 rounded flex items-center justify-between">
                 <div>
                   <p className="text-slate-300 font-medium">Discord API</p>
-                  <p className="text-slate-500 text-xs">Token stored securely in httpOnly cookie</p>
+                  <p className="text-[#666666] text-xs">Token stored securely in httpOnly cookie</p>
                 </div>
                 {discordUser ? (
                   <span className="text-green-400 text-xs px-2 py-1 bg-green-900/30 rounded">Active</span>
                 ) : (
-                  <span className="text-slate-500 text-xs px-2 py-1 bg-slate-700 rounded">Not Connected</span>
+                  <span className="text-[#666666] text-xs px-2 py-1 bg-[#333333] rounded">Not Connected</span>
                 )}
               </div>
             </div>
@@ -608,7 +612,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-white font-medium">Clear All Data</p>
-                  <p className="text-sm text-slate-500">Remove all cached repository data and preferences</p>
+                  <p className="text-sm text-[#666666]">Remove all cached repository data and preferences</p>
                 </div>
                 <button
                   onClick={() => setShowClearDataConfirm(true)}
@@ -630,7 +634,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => setShowClearDataConfirm(false)}
-                      className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                      className="px-3 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded transition-colors"
                     >
                       Cancel
                     </button>
