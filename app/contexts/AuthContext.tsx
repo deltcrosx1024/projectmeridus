@@ -22,6 +22,8 @@ interface VercelUser {
   username: string;
   email: string;
   userId: string;
+  teamId?: string;
+  teamSlug?: string;
 }
 
 interface AuthContextType {

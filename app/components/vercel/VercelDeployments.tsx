@@ -76,10 +76,11 @@ function getStateIcon(state: string) {
 }
 
 export default function VercelDeployments() {
-  const { vercelUser } = useAuth();
+  const { vercelUser, logout } = useAuth();
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchDeployments = useCallback(async () => {
@@ -89,8 +90,9 @@ export default function VercelDeployments() {
       const res = await fetch('/api/vercel/deployments?limit=10');
       if (!res.ok) {
         const data = await res.json();
-        if (data.needsAuth) {
-          setError('Please connect your Vercel account');
+        if (data.needsAuth || data.needsReauth) {
+          setNeedsReauth(true);
+          setError(data.error || 'Please reconnect your Vercel account');
         } else {
           setError(data.error || 'Failed to fetch deployments');
         }
@@ -100,6 +102,7 @@ export default function VercelDeployments() {
       setDeployments(data);
       setLastUpdated(new Date());
       setError(null);
+      setNeedsReauth(false);
     } catch (err) {
       console.error('Failed to fetch deployments:', err);
       setError('Failed to fetch deployments');
