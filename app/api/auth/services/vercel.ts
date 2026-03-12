@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { linkVercelAccount } from '@/app/lib/userLinks';
 
-const VERCEL_API_URL = 'https://api.vercel.com';
+const VERCEL_TOKEN_URL = 'https://api.vercel.com/login/oauth/token';
+const VERCEL_USER_URL = 'https://api.vercel.com/v2/user';
 
 interface VercelTokenResponse {
   access_token?: string;
+  id_token?: string;
   token_type?: string;
+  expires_in?: number;
+  refresh_token?: string;
   error?: string;
   error_description?: string;
 }
@@ -18,33 +22,34 @@ interface VercelUser {
     name: string;
     username: string;
   };
-  teams: Array<{
-    id: string;
-    name: string;
-    slug: string;
-  }>;
 }
 
 /**
- * Handle Vercel OAuth callback
- * Exchanges code for access token and links to existing Discord account
+ * Handle Vercel OAuth callback (Sign in with Vercel - PKCE flow)
  */
 export async function handleVercel(code: string, request: Request) {
-  console.log('[Vercel OAuth] Starting callback...');
+  console.log('[Vercel OAuth] Starting callback with PKCE flow...');
   
   const clientId = process.env.VERCEL_CLIENT_ID;
   const clientSecret = process.env.VERCEL_CLIENT_SECRET;
   const redirectUri = process.env.VERCEL_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?service=vercel`;
 
-  console.log('[Vercel OAuth] Client ID:', clientId ? 'set' : 'MISSING');
-  console.log('[Vercel OAuth] Client Secret:', clientSecret ? 'set' : 'MISSING');
-  console.log('[Vercel OAuth] Redirect URI:', redirectUri);
-
   if (!clientId || !clientSecret) {
     throw new Error('Vercel OAuth not configured. Add VERCEL_CLIENT_ID and VERCEL_CLIENT_SECRET to .env');
   }
 
-  const tokenResp = await fetch('https://api.vercel.com/oauth/access_token', {
+  // Get code verifier from cookie
+  const cookieStore = await cookies();
+  const codeVerifier = cookieStore.get('vercel_code_verifier')?.value;
+  
+  if (!codeVerifier) {
+    throw new Error('Missing code verifier. Please try logging in again.');
+  }
+
+  console.log('[Vercel OAuth] Exchanging code for token...');
+
+  // Exchange code for token using PKCE
+  const tokenResp = await fetch(VERCEL_TOKEN_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -52,32 +57,46 @@ export async function handleVercel(code: string, request: Request) {
     body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
+      grant_type: 'authorization_code',
       code,
       redirect_uri: redirectUri,
+      code_verifier: codeVerifier,
     }).toString(),
   });
 
-  const tokenJson: VercelTokenResponse = await tokenResp.json();
-  console.log('[Vercel OAuth] Token response:', tokenJson);
+  const rawText = await tokenResp.text();
+  console.log('[Vercel OAuth] Token response status:', tokenResp.status);
+  console.log('[Vercel OAuth] Token response:', rawText.substring(0, 500));
+  
+  let tokenJson: VercelTokenResponse;
+  try {
+    tokenJson = JSON.parse(rawText);
+  } catch {
+    throw new Error(`Failed to parse Vercel response: ${rawText}`);
+  }
   
   if (tokenJson.error) {
     console.error('[Vercel Token Error]', tokenJson);
-    throw new Error(tokenJson.error_description || tokenJson.error);
+    const errorMsg = tokenJson.error_description || tokenJson.error;
+    throw new Error(`Vercel OAuth failed: ${errorMsg}`);
   }
 
   const accessToken = tokenJson.access_token;
   if (!accessToken) {
-    throw new Error('No access token returned from Vercel. Please check your OAuth app settings.');
+    throw new Error('No access token returned from Vercel');
   }
 
-  const userResp = await fetch(`${VERCEL_API_URL}/www/user`, {
+  console.log('[Vercel OAuth] Fetching user info...');
+
+  // Get user info using the access token
+  const userResp = await fetch(VERCEL_USER_URL, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   });
 
   if (!userResp.ok) {
-    const errData = await userResp.json();
+    const errData = await userResp.text();
     console.error('[Vercel User Fetch Error]', errData);
     throw new Error(`Failed to fetch Vercel user info: ${userResp.statusText}`);
   }
@@ -87,7 +106,6 @@ export async function handleVercel(code: string, request: Request) {
 
   const res = NextResponse.redirect(new URL('/', request.url));
 
-  const cookieStore = await cookies();
   const discordUserCookie = cookieStore.get('discord_user')?.value;
   
   if (discordUserCookie) {
@@ -96,7 +114,6 @@ export async function handleVercel(code: string, request: Request) {
       
       await linkVercelAccount(discordUser.id, accessToken, {
         vercelUsername: vercelUser.user.username,
-        vercelTeamId: vercelUser.teams?.[0]?.id,
       });
       
       console.log(`[Vercel OAuth] Linked Vercel to Discord ${discordUser.id}`);
@@ -132,6 +149,10 @@ export async function handleVercel(code: string, request: Request) {
       maxAge: 60 * 5,
     });
   }
+
+  // Clear temporary cookies
+  res.cookies.delete('vercel_code_verifier');
+  res.cookies.delete('vercel_nonce');
 
   return res;
 }
