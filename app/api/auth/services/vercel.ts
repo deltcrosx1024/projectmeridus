@@ -30,12 +30,18 @@ interface VercelUser {
  * Exchanges code for access token and links to existing Discord account
  */
 export async function handleVercel(code: string, request: Request) {
+  console.log('[Vercel OAuth] Starting callback...');
+  
   const clientId = process.env.VERCEL_CLIENT_ID;
   const clientSecret = process.env.VERCEL_CLIENT_SECRET;
   const redirectUri = process.env.VERCEL_REDIRECT_URI || `${new URL(request.url).origin}/api/auth/callback?service=vercel`;
 
+  console.log('[Vercel OAuth] Client ID:', clientId ? 'set' : 'MISSING');
+  console.log('[Vercel OAuth] Client Secret:', clientSecret ? 'set' : 'MISSING');
+  console.log('[Vercel OAuth] Redirect URI:', redirectUri);
+
   if (!clientId || !clientSecret) {
-    throw new Error('Vercel OAuth not configured');
+    throw new Error('Vercel OAuth not configured. Add VERCEL_CLIENT_ID and VERCEL_CLIENT_SECRET to .env');
   }
 
   const tokenResp = await fetch('https://api.vercel.com/oauth/access_token', {
@@ -52,6 +58,7 @@ export async function handleVercel(code: string, request: Request) {
   });
 
   const tokenJson: VercelTokenResponse = await tokenResp.json();
+  console.log('[Vercel OAuth] Token response:', tokenJson);
   
   if (tokenJson.error) {
     console.error('[Vercel Token Error]', tokenJson);
@@ -60,7 +67,7 @@ export async function handleVercel(code: string, request: Request) {
 
   const accessToken = tokenJson.access_token;
   if (!accessToken) {
-    throw new Error('No access token returned from Vercel');
+    throw new Error('No access token returned from Vercel. Please check your OAuth app settings.');
   }
 
   const userResp = await fetch(`${VERCEL_API_URL}/www/user`, {
@@ -76,6 +83,7 @@ export async function handleVercel(code: string, request: Request) {
   }
 
   const vercelUser: VercelUser = await userResp.json();
+  console.log('[Vercel OAuth] User fetched:', vercelUser.user.username);
 
   const res = NextResponse.redirect(new URL('/', request.url));
 
