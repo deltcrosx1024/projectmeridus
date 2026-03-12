@@ -152,19 +152,17 @@ export default function CTASection() {
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg p-12 text-center">
+    <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-12 text-center">
       {/* ===== CTA TITLE ===== */}
       <h2 
         className="text-3xl font-bold text-white mb-4" 
-        style={{ fontFamily: 'var(--font-aldrich)' }}
       >
         {ctaContent.title}
       </h2>
 
       {/* ===== CTA DESCRIPTION ===== */}
       <p 
-        className="text-white/90 mb-8 max-w-2xl mx-auto" 
-        style={{ fontFamily: 'var(--font-archivo)' }}
+        className="text-[#A1A1AA] mb-8 max-w-2xl mx-auto" 
       >
         {ctaContent.description}
       </p>
@@ -172,7 +170,7 @@ export default function CTASection() {
       {/* ===== CTA BUTTON ===== */}
       <button
         onClick={ctaContent.buttonAction}
-        className="px-10 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-slate-100 transition-all shadow-lg"
+        className="px-10 py-3 bg-white text-black font-semibold rounded-md hover:bg-[#e5e5e5] transition-all"
       >
         {ctaContent.buttonText}
       </button>

@@ -32,7 +32,7 @@ export default function HeroSection() {
         {!isLoading && !githubUser && (
           <button 
             onClick={() => handleGitHubLogin(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '')}
-            className="px-8 py-3 bg-[#0070F3] hover:bg-[#0060df] text-white font-semibold rounded-md transition-all"
+            className="px-8 py-3 bg-white text-black font-semibold rounded-md hover:bg-[#e5e5e5] transition-all"
           >
             Connect GitHub
           </button>
