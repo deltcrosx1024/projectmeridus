@@ -94,15 +94,34 @@ export function getVercelAuthUrl(clientId: string, redirectUri: string, state?: 
 
 /**
  * Client-side hook for Vercel login
- * Usage: onClick={() => handleVercelLogin()}
+ * Uses Sign in with Vercel (new PKCE flow)
  */
 export function handleVercelLogin(clientId: string): void {
   const redirectUri = window.location.origin + '/api/auth/callback?service=vercel';
   const state = generateState();
   
-  // Store state and service type in cookies for CSRF validation
+  // Generate code verifier and challenge for PKCE
+  const codeVerifier = generateState() + generateState();
+  const codeChallenge = btoa(codeVerifier).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '').slice(0, 43);
+  const nonce = generateState();
+  
+  // Store state, nonce, and code verifier in cookies
   document.cookie = `oauth_state=${state}; path=/; max-age=600`;
   document.cookie = `oauth_service=vercel; path=/; max-age=600`;
+  document.cookie = `vercel_code_verifier=${codeVerifier}; path=/; max-age=600`;
+  document.cookie = `vercel_nonce=${nonce}; path=/; max-age=600`;
   
-  window.location.href = getVercelAuthUrl(clientId, redirectUri, state);
+  // Build authorization URL with PKCE
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid profile email',
+    state,
+    nonce,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  });
+  
+  window.location.href = `https://vercel.com/oauth/authorize?${params}`;
 }
