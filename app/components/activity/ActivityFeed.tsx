@@ -98,7 +98,7 @@ export default function ActivityFeed() {
     if (!githubUser) return;
     
     try {
-      const res = await fetch('/api/github/events?per_page=50');
+      const res = await fetch('/api/github/events?per_page=10');
       if (!res.ok) {
         const data = await res.json();
         if (data.needsAuth) {
