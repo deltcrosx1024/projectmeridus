@@ -200,7 +200,17 @@ export default function VercelDeployments() {
         {/* Error state */}
         {error && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-900/50 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-red-400 text-sm">{error}</p>
+              <button
+                onClick={() => {
+                  logout('vercel');
+                }}
+                className="ml-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
+              >
+                Reconnect
+              </button>
+            </div>
           </div>
         )}
 
