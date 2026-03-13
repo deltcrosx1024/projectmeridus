@@ -87,7 +87,7 @@ export default function VercelDeployments() {
     if (!vercelUser) return;
 
     try {
-      const res = await fetch('/api/vercel/deployments?limit=10');
+      const res = await fetch('/api/vercel/deployments?limit=20');
       if (!res.ok) {
         const data = await res.json();
         if (data.needsAuth || data.needsReauth) {

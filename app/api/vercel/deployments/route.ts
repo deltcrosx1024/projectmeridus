@@ -14,55 +14,78 @@ export async function GET(request: Request) {
 
   // Get team ID from stored user data
   let teamId = '';
+  let teamSlug = '';
   if (vercelUserCookie) {
     try {
       const userData = JSON.parse(vercelUserCookie);
       teamId = userData.teamId || '';
+      teamSlug = userData.teamSlug || '';
     } catch (e) {
       console.error('[Vercel] Failed to parse vercel_user cookie:', e);
     }
   }
 
   const { searchParams } = new URL(request.url);
-  const limit = parseInt(searchParams.get('limit') || '10');
+  const limit = parseInt(searchParams.get('limit') || '20');
 
   try {
-    let apiUrl = `${VERCEL_API_URL}/deployments?limit=${limit}`;
+    let allDeployments: any[] = [];
+    let hasMore = false;
+
+    // If user has a team, fetch from team endpoint
     if (teamId) {
-      apiUrl += `&teamId=${teamId}`;
-    }
-    console.log('[Vercel] Fetching deployments from:', apiUrl);
+      console.log('[Vercel] Fetching team deployments for team:', teamId);
+      
+      // Try team endpoint first
+      const teamApiUrl = `${VERCEL_API_URL}/teams/${teamId}/deployments?limit=${limit}`;
+      const teamRes = await fetch(teamApiUrl, {
+        headers: {
+          'Authorization': `Bearer ${vercelToken}`,
+        },
+      });
 
-    const deploymentsRes = await fetch(apiUrl, {
-      headers: {
-        'Authorization': `Bearer ${vercelToken}`,
-      },
-    });
-
-    if (!deploymentsRes.ok) {
-      const errorText = await deploymentsRes.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { error: { message: errorText } };
+      if (teamRes.ok) {
+        const teamData = await teamRes.json();
+        allDeployments = teamData.deployments || [];
+        hasMore = teamData.pagination?.count >= limit;
+        console.log('[Vercel] Team deployments found:', allDeployments.length);
+      } else {
+        console.error('[Vercel] Team deployments error:', await teamRes.text());
+        
+        // Fallback to regular endpoint with teamId param
+        const fallbackUrl = `${VERCEL_API_URL}/deployments?limit=${limit}&teamId=${teamId}`;
+        const fallbackRes = await fetch(fallbackUrl, {
+          headers: {
+            'Authorization': `Bearer ${vercelToken}`,
+          },
+        });
+        
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          allDeployments = fallbackData.deployments || [];
+          console.log('[Vercel] Fallback deployments found:', allDeployments.length);
+        }
       }
-      
-      console.error('[Vercel] Deployments error:', errorData);
-      
-      if (errorData.error?.code === 'forbidden' || errorData.error?.invalidToken) {
-        return NextResponse.json({ 
-          error: 'Vercel authorization expired. Please reconnect your Vercel account.',
-          needsReauth: true 
-        }, { status: 403 });
+    } 
+    
+    // Also fetch personal deployments if no team deployments
+    if (allDeployments.length === 0) {
+      console.log('[Vercel] Fetching personal deployments');
+      const personalApiUrl = `${VERCEL_API_URL}/deployments?limit=${limit}`;
+      const personalRes = await fetch(personalApiUrl, {
+        headers: {
+          'Authorization': `Bearer ${vercelToken}`,
+        },
+      });
+
+      if (personalRes.ok) {
+        const personalData = await personalRes.json();
+        allDeployments = personalData.deployments || [];
+        console.log('[Vercel] Personal deployments found:', allDeployments.length);
       }
-      
-      return NextResponse.json({ error: errorData.error?.message || 'Failed to fetch deployments' }, { status: deploymentsRes.status });
     }
 
-    const deployments = await deploymentsRes.json();
-
-    const formattedDeployments = deployments.deployments?.map((d: any) => ({
+    const formattedDeployments = allDeployments.map((d: any) => ({
       uid: d.uid,
       name: d.name,
       state: d.state,
@@ -80,8 +103,11 @@ export async function GET(request: Request) {
       env: d.env,
       regions: d.regions,
       plan: d.plan,
-    })) || [];
+      projectId: d.projectId,
+      teamId: d.teamId || teamId,
+    }));
 
+    console.log('[Vercel] Total deployments:', formattedDeployments.length);
     return NextResponse.json(formattedDeployments);
   } catch (err) {
     console.error('[Vercel] Fetch error:', err);
