@@ -105,31 +105,43 @@ export async function handleVercel(code: string, request: Request) {
 
   console.log('[Vercel OAuth] User from ID token:', { vercelUsername, vercelEmail, vercelUserId });
 
-  // Fetch user's teams to get team ID
+  // Also try to get team info from access token by decoding it
   let vercelTeamId = '';
   let vercelTeamSlug = '';
-  try {
-    const teamsRes = await fetch('https://api.vercel.com/v6/teams', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-    
-    if (teamsRes.ok) {
-      const teamsData = await teamsRes.json();
-      if (teamsData.teams && teamsData.teams.length > 0) {
-        // Get the first team (usually the user's main team)
-        vercelTeamId = teamsData.teams[0].id;
-        vercelTeamSlug = teamsData.teams[0].slug;
-        console.log('[Vercel OAuth] Found team:', { vercelTeamId, vercelTeamSlug });
+  
+  // First try to decode the access token to see if it has team info
+  const decodedAccessToken = decodeJwt(accessToken);
+  if (decodedAccessToken) {
+    console.log('[Vercel OAuth] Decoded access token:', decodedAccessToken);
+    vercelTeamId = decodedAccessToken.team_id || decodedAccessToken.tid || '';
+    vercelTeamSlug = decodedAccessToken.team_slug || '';
+  }
+  
+  // If no team from token, fetch from teams API
+  if (!vercelTeamId) {
+    try {
+      const teamsRes = await fetch('https://api.vercel.com/v6/teams', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      
+      if (teamsRes.ok) {
+        const teamsData = await teamsRes.json();
+        console.log('[Vercel OAuth] Teams API response:', teamsData);
+        if (teamsData.teams && teamsData.teams.length > 0) {
+          vercelTeamId = teamsData.teams[0].id;
+          vercelTeamSlug = teamsData.teams[0].slug;
+          console.log('[Vercel OAuth] Found team:', { vercelTeamId, vercelTeamSlug });
+        } else {
+          console.log('[Vercel OAuth] No teams found for user');
+        }
       } else {
-        console.log('[Vercel OAuth] No teams found for user');
+        console.error('[Vercel OAuth] Failed to fetch teams:', await teamsRes.text());
       }
-    } else {
-      console.error('[Vercel OAuth] Failed to fetch teams:', await teamsRes.text());
+    } catch (err) {
+      console.error('[Vercel OAuth] Error fetching teams:', err);
     }
-  } catch (err) {
-    console.error('[Vercel OAuth] Error fetching teams:', err);
   }
 
   const res = NextResponse.redirect(new URL('/', request.url));
