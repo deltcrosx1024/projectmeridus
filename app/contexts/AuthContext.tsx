@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 
 interface GitHubUser {
   id: number;
@@ -31,41 +31,82 @@ interface AuthContextType {
   discordUser: DiscordUser | null;
   vercelUser: VercelUser | null;
   isLoading: boolean;
+  refreshAuth: () => void;
   logout: (service: 'github' | 'discord' | 'vercel') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function parseCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [githubUser, setGithubUser] = useState<GitHubUser | null>(null);
   const [discordUser, setDiscordUser] = useState<DiscordUser | null>(null);
   const [vercelUser, setVercelUser] = useState<VercelUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(false);
+
+  const refreshAuth = useCallback(() => {
+    if (!mountedRef.current) return;
+    
+    try {
+      const ghUserCookie = parseCookie('github_user');
+      const discordUserCookie = parseCookie('discord_user');
+      const vercelUserCookie = parseCookie('vercel_user');
+
+      if (ghUserCookie) {
+        try {
+          setGithubUser(JSON.parse(ghUserCookie));
+        } catch (e) {
+          console.error('Failed to parse github_user cookie:', e);
+          setGithubUser(null);
+        }
+      } else {
+        setGithubUser(null);
+      }
+
+      if (discordUserCookie) {
+        try {
+          setDiscordUser(JSON.parse(discordUserCookie));
+        } catch (e) {
+          console.error('Failed to parse discord_user cookie:', e);
+          setDiscordUser(null);
+        }
+      } else {
+        setDiscordUser(null);
+      }
+
+      if (vercelUserCookie) {
+        try {
+          setVercelUser(JSON.parse(vercelUserCookie));
+        } catch (e) {
+          console.error('Failed to parse vercel_user cookie:', e);
+          setVercelUser(null);
+        }
+      } else {
+        setVercelUser(null);
+      }
+    } catch (e) {
+      console.error('Auth refresh failed:', e);
+    }
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     
     const checkAuth = () => {
       try {
-        const ghUserCookie = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('github_user='))
-          ?.split('=')[1];
-        
-        const discordUserCookie = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('discord_user='))
-          ?.split('=')[1];
-        
-        const vercelUserCookie = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('vercel_user='))
-          ?.split('=')[1];
+        const ghUserCookie = parseCookie('github_user');
+        const discordUserCookie = parseCookie('discord_user');
+        const vercelUserCookie = parseCookie('vercel_user');
 
         if (ghUserCookie) {
           try {
-            setGithubUser(JSON.parse(decodeURIComponent(ghUserCookie)));
+            setGithubUser(JSON.parse(ghUserCookie));
           } catch (e) {
             console.error('Failed to parse github_user cookie:', e);
           }
@@ -73,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (discordUserCookie) {
           try {
-            setDiscordUser(JSON.parse(decodeURIComponent(discordUserCookie)));
+            setDiscordUser(JSON.parse(discordUserCookie));
           } catch (e) {
             console.error('Failed to parse discord_user cookie:', e);
           }
@@ -81,18 +122,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (vercelUserCookie) {
           try {
-            setVercelUser(JSON.parse(decodeURIComponent(vercelUserCookie)));
+            setVercelUser(JSON.parse(vercelUserCookie));
           } catch (e) {
             console.error('Failed to parse vercel_user cookie:', e);
           }
         }
       } catch (e) {
         console.error('Auth check failed:', e);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, []);
+
+    const handleFocus = () => {
+      refreshAuth();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      mountedRef.current = false;
+    };
+  }, [refreshAuth]);
 
   const logout = (service: 'github' | 'discord' | 'vercel') => {
     if (service === 'github') {
@@ -112,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ githubUser, discordUser, vercelUser, isLoading, logout }}>
+    <AuthContext.Provider value={{ githubUser, discordUser, vercelUser, isLoading, refreshAuth, logout }}>
       {children}
     </AuthContext.Provider>
   );

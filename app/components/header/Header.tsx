@@ -13,16 +13,20 @@
 import { NAV_ITEMS } from '@/app/constants/data';
 import { handleGitHubLogin, handleDiscordLogin, handleVercelLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NotificationCenter from '@/app/components/notifications/NotificationCenter';
 
 export default function Header() {
-  const { githubUser, discordUser, vercelUser, logout, isLoading } = useAuth();
+  const { githubUser, discordUser, vercelUser, logout, isLoading, refreshAuth } = useAuth();
   const [showGithubMenu, setShowGithubMenu] = useState(false);
   const [showDiscordMenu, setShowDiscordMenu] = useState(false);
   const [showVercelMenu, setShowVercelMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
 
   return (
     <header className="border-b border-[#333333] backdrop-blur-sm bg-black/80 sticky top-0 z-50">

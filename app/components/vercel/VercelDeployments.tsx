@@ -84,32 +84,44 @@ export default function VercelDeployments() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchDeployments = useCallback(async () => {
-    if (!vercelUser) return;
+    setIsLoading(true);
+    setError(null);
 
     try {
-      const res = await fetch('/api/vercel/deployments?limit=20');
+      const res = await fetch('/api/vercel/deployments?limit=20', {
+        credentials: 'include',
+      });
+      
+      const data = await res.json();
+      
       if (!res.ok) {
-        const data = await res.json();
-        if (data.needsAuth || data.needsReauth) {
+        if (data.needsAuth || data.needsReauth || res.status === 401) {
           setNeedsReauth(true);
           setError(data.error || 'Please reconnect your Vercel account');
         } else {
-          setError(data.error || 'Failed to fetch deployments');
+          setError(data.error || `Failed to fetch deployments (${res.status})`);
         }
+        setDeployments([]);
         return;
       }
-      const data = await res.json();
-      setDeployments(data);
+      
+      if (!Array.isArray(data) || data.length === 0) {
+        setError(null);
+        setDeployments([]);
+      } else {
+        setDeployments(data);
+        setError(null);
+        setNeedsReauth(false);
+      }
       setLastUpdated(new Date());
-      setError(null);
-      setNeedsReauth(false);
     } catch (err) {
-      console.error('Failed to fetch deployments:', err);
-      setError('Failed to fetch deployments');
+      console.error('[VercelDeployments] Fetch error:', err);
+      setError('Failed to connect to Vercel API');
+      setDeployments([]);
     } finally {
       setIsLoading(false);
     }
-  }, [vercelUser]);
+  }, []);
 
   useEffect(() => {
     if (vercelUser) {
@@ -144,7 +156,7 @@ export default function VercelDeployments() {
                 Vercel Deployments
               </h2>
               <p className="text-[#A1A1AA] text-sm">
-                Live deployment status
+                {vercelUser.username ? `@${vercelUser.username}'s deployments` : 'Live deployment status'}
                 {lastUpdated && (
                   <span className="ml-2 text-xs text-[#666666]">
                     • Updated {formatTimeAgo(lastUpdated.getTime())}
@@ -226,8 +238,12 @@ export default function VercelDeployments() {
         {!isLoading && !error && (
           <div className="space-y-3">
             {deployments.length === 0 ? (
-              <div className="text-center py-12 text-[#666666]">
-                <p>No deployments found</p>
+              <div className="text-center py-12 bg-[#0a0a0a] border border-[#333333] rounded-lg">
+                <svg className="w-12 h-12 mx-auto mb-4 text-[#666666]" viewBox="0 0 76 76" fill="currentColor">
+                  <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
+                </svg>
+                <p className="text-[#666666] mb-2">No deployments found</p>
+                <p className="text-[#444444] text-sm">Connect a Vercel project to see deployments here</p>
               </div>
             ) : (
               deployments.map((deployment) => {

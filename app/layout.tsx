@@ -15,6 +15,7 @@ import { SWRProvider } from "./components/swr-provider";
 import CommandPaletteWrapper from "./components/command-palette/CommandPaletteWrapper";
 import ToastContainer from "./components/toast/ToastContainer";
 import MobileNav from "./components/mobile-nav/MobileNav";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const sfProDisplay = localFont({
   src: [
@@ -63,6 +64,7 @@ export default function RootLayout({
       <body
         className={`${sfProDisplay.variable} ${sfMono.variable} ${aldrich.variable} antialiased`}
       >
+        <SpeedInsights />
         <AuthProvider>
           <SettingsProvider>
             <ThemeProvider>

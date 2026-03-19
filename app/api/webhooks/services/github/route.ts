@@ -1,5 +1,35 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { redis } from '@/app/lib/redis';
+
+const NOTIFICATIONS_PREFIX = 'meridus:notifications:';
+
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+}
+
+async function saveNotification(userId: string, notification: {
+  type: 'webhook' | 'issue' | 'commit' | 'pr' | 'release';
+  title: string;
+  message: string;
+  data?: { repo?: string; url?: string };
+}) {
+  try {
+    const key = `${NOTIFICATIONS_PREFIX}${userId}`;
+    const notif = {
+      id: generateId(),
+      ...notification,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+    
+    await redis.lpush(key, JSON.stringify(notif));
+    await redis.ltrim(key, 0, 99);
+    await redis.expire(key, 60 * 60 * 24 * 7);
+  } catch (err) {
+    console.error('[GitHub Webhook] Failed to save notification:', err);
+  }
+}
 
 /**
  * GitHub Webhook Handler
