@@ -11,12 +11,17 @@ export interface UserSettings {
   webhookNotifications: boolean;
   issueAlerts: boolean;
   commitNotifications: boolean;
+  prAlerts: boolean;
+  releaseAlerts: boolean;
+  dmNotifications: boolean;
+  digestMode: 'instant' | 'hourly' | 'daily';
 
   // Repository preferences
   defaultView: 'grid' | 'list' | 'compact';
   autoRefresh: boolean;
   refreshInterval: number; // in minutes
   pinnedRepos: number[]; // Array of repo IDs
+  itemsPerPage: number; // Number of items to show per page
 
   // Appearance
   compactMode: boolean;
@@ -24,13 +29,23 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
+  // Notifications
   webhookNotifications: true,
   issueAlerts: true,
   commitNotifications: false,
+  prAlerts: true,
+  releaseAlerts: true,
+  dmNotifications: false,
+  digestMode: 'instant',
+
+  // Repository preferences
   defaultView: 'grid',
   autoRefresh: true,
   refreshInterval: 5,
   pinnedRepos: [],
+  itemsPerPage: 10,
+
+  // Appearance
   compactMode: false,
   theme: 'dark',
 };

@@ -9,8 +9,8 @@ import { UserSettings, DEFAULT_SETTINGS } from '@/app/lib/settings';
 import DataExport from '@/app/components/export/DataExport';
 
 interface PendingChanges {
-  notifications: Partial<Pick<UserSettings, 'webhookNotifications' | 'issueAlerts' | 'commitNotifications'>>;
-  repository: Partial<Pick<UserSettings, 'defaultView' | 'autoRefresh' | 'refreshInterval'>>;
+  notifications: Partial<Pick<UserSettings, 'webhookNotifications' | 'issueAlerts' | 'commitNotifications' | 'prAlerts' | 'releaseAlerts' | 'dmNotifications' | 'digestMode'>>;
+  repository: Partial<Pick<UserSettings, 'defaultView' | 'autoRefresh' | 'refreshInterval' | 'itemsPerPage'>>;
   appearance: Partial<Pick<UserSettings, 'compactMode' | 'theme'>>;
 }
 
@@ -296,7 +296,27 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between py-3">
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]">
+                <div>
+                  <p className="text-white font-medium">Pull Request Alerts</p>
+                  <p className="text-sm text-[#666666]">Get notified when PRs are opened or updated</p>
+                </div>
+                <button onClick={() => handleLocalChange('notifications', 'prAlerts', !localSettings.prAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.prAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.prAlerts ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]">
+                <div>
+                  <p className="text-white font-medium">Release Alerts</p>
+                  <p className="text-sm text-[#666666]">Get notified when new releases are published</p>
+                </div>
+                <button onClick={() => handleLocalChange('notifications', 'releaseAlerts', !localSettings.releaseAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.releaseAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.releaseAlerts ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]">
                 <div>
                   <p className="text-white font-medium">Commit Notifications</p>
                   <p className="text-sm text-[#666666]">Receive updates on new commits</p>
@@ -304,6 +324,28 @@ export default function SettingsPage() {
                 <button onClick={() => handleLocalChange('notifications', 'commitNotifications', !localSettings.commitNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.commitNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.commitNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]">
+                <div>
+                  <p className="text-white font-medium">DM Notifications</p>
+                  <p className="text-sm text-[#666666]">Receive notifications via Discord DM</p>
+                </div>
+                <button onClick={() => handleLocalChange('notifications', 'dmNotifications', !localSettings.dmNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.dmNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.dmNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-white font-medium">Digest Mode</p>
+                  <p className="text-sm text-[#666666]">How often to receive notification summaries</p>
+                </div>
+                <select value={localSettings.digestMode} onChange={(e) => handleLocalChange('notifications', 'digestMode', e.target.value)} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                  <option value="instant">Instant</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="daily">Daily</option>
+                </select>
               </div>
             </div>
 
@@ -335,6 +377,19 @@ export default function SettingsPage() {
                   <option value="grid">Grid</option>
                   <option value="list">List</option>
                   <option value="compact">Compact</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-[#333333]">
+                <div>
+                  <p className="text-white font-medium">Items Per Page</p>
+                  <p className="text-sm text-[#666666]">Number of items to show per page</p>
+                </div>
+                <select value={localSettings.itemsPerPage} onChange={(e) => handleLocalChange('repository', 'itemsPerPage', parseInt(e.target.value))} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
                 </select>
               </div>
 
