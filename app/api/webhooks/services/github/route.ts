@@ -1,11 +1,60 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { redis } from '@/app/lib/redis';
+import { getUserSettings } from '@/app/lib/settings';
 
 const NOTIFICATIONS_PREFIX = 'meridus:notifications:';
+const SETTINGS_PREFIX = 'settings:';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+}
+
+async function getLinkedUsersForRepo(repoFullName: string): Promise<string[]> {
+  const users: string[] = [];
+  let cursor = '0';
+  
+  do {
+    const result = await redis.scan(cursor, { match: 'meridus:link:*', count: 100 });
+    cursor = result[0];
+    const keys = result[1];
+    
+    for (const key of keys) {
+      try {
+        const data = await redis.get<string>(key);
+        if (data) {
+          const parsed = JSON.parse(data);
+          users.push(parsed.discordUserId);
+        }
+      } catch (err) {
+        console.error('[GitHub Webhook] Error getting linked user:', err);
+      }
+    }
+  } while (cursor !== '0');
+  
+  return users;
+}
+
+async function shouldSendNotification(userId: string, eventType: string): Promise<boolean> {
+  try {
+    const settings = await getUserSettings(`discord:${userId}`);
+    
+    switch (eventType) {
+      case 'push':
+        return settings.commitNotifications === true;
+      case 'pull_request':
+        return settings.prAlerts === true;
+      case 'issues':
+        return settings.issueAlerts === true;
+      case 'release':
+        return settings.releaseAlerts === true;
+      default:
+        return true;
+    }
+  } catch (err) {
+    console.error('[GitHub Webhook] Error checking user settings:', err);
+    return true;
+  }
 }
 
 async function saveNotification(userId: string, notification: {
@@ -82,7 +131,8 @@ export async function POST(request: Request) {
 
   try {
     const payload = JSON.parse(body);
-    console.log(`[GitHub Webhook] Event: ${event}, Repo: ${payload.repository?.full_name}`);
+    const repoFullName = payload.repository?.full_name;
+    console.log(`[GitHub Webhook] Event: ${event}, Repo: ${repoFullName}`);
 
     // Only process supported events
     const supportedEvents = ['push', 'pull_request', 'issues', 'issue_comment', 'release'];
@@ -91,9 +141,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, event, deliveryId, ignored: true }, { status: 200 });
     }
 
+    // Get linked users for this repository
+    const linkedUsers = await getLinkedUsersForRepo(repoFullName);
+    console.log(`[GitHub Webhook] Found ${linkedUsers.length} linked users`);
+
     // Send to subscribed Discord channels with rich embeds
     const { sendGitHubNotification } = await import('@/app/lib/discord/notifications');
-    await sendGitHubNotification(event!, payload, payload.repository?.full_name);
+    await sendGitHubNotification(event!, payload, repoFullName);
+
+    // Save notifications for linked users based on their preferences
+    for (const userId of linkedUsers) {
+      const shouldSend = await shouldSendNotification(userId, event!);
+      if (shouldSend) {
+        let title = '';
+        let message = '';
+        
+        switch (event) {
+          case 'push':
+            title = 'New Commits Pushed';
+            message = `${payload.commits?.length || 0} commit(s) pushed to ${repoFullName}`;
+            break;
+          case 'pull_request':
+            title = `Pull Request ${payload.action}`;
+            message = `${payload.pull_request?.title} in ${repoFullName}`;
+            break;
+          case 'issues':
+            title = `Issue ${payload.action}`;
+            message = `${payload.issue?.title} in ${repoFullName}`;
+            break;
+          case 'release':
+            title = `New Release: ${payload.release?.tag_name}`;
+            message = `${repoFullName}`;
+            break;
+          default:
+            title = `GitHub: ${event}`;
+            message = repoFullName;
+        }
+        
+        await saveNotification(userId, {
+          type: event === 'pull_request' ? 'pr' : event === 'issues' ? 'issue' : event === 'release' ? 'release' : 'commit',
+          title,
+          message,
+          data: { 
+            repo: repoFullName, 
+            url: payload.pull_request?.html_url || payload.issue?.html_url || payload.release?.html_url || payload.repository?.html_url 
+          },
+        });
+      }
+    }
 
     return NextResponse.json({ received: true, event, deliveryId }, { status: 200 });
   } catch (err: any) {
