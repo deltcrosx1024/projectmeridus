@@ -123,16 +123,41 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
       decryptedVercelToken = await decryptToken(parsed.vercelToken);
     }
 
-    // Update last used time
-    await redis.setex(key, TTL_SECONDS, JSON.stringify({
-      ...parsed,
-      lastUsed: new Date().toISOString(),
-    }));
+    // Update last used time WITHOUT re-encrypting tokens
+    // Only update if lastUsed is older than 5 minutes to reduce Redis writes
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    const lastUsedTime = parsed.lastUsed ? new Date(parsed.lastUsed).getTime() : 0;
+    
+    if (lastUsedTime < fiveMinutesAgo) {
+      const updateData = {
+        ...parsed,
+        lastUsed: new Date().toISOString(),
+      };
+      // Store with encrypted tokens (read from original data)
+      const updatedLink = {
+        discordUserId: updateData.discordUserId,
+        discordUsername: updateData.discordUsername,
+        githubUsername: updateData.githubUsername,
+        githubToken: parsed.githubToken, // Keep original encrypted token
+        vercelToken: parsed.vercelToken, // Keep original encrypted token if exists
+        vercelUsername: updateData.vercelUsername,
+        vercelTeamId: updateData.vercelTeamId,
+        linkedAt: updateData.linkedAt,
+        lastUsed: updateData.lastUsed,
+      };
+      await redis.setex(key, TTL_SECONDS, JSON.stringify(updatedLink));
+    }
 
     return {
-      ...parsed,
+      discordUserId: parsed.discordUserId,
+      discordUsername: parsed.discordUsername,
       githubToken: decryptedToken,
+      githubUsername: parsed.githubUsername,
       vercelToken: decryptedVercelToken,
+      vercelUsername: parsed.vercelUsername,
+      vercelTeamId: parsed.vercelTeamId,
+      linkedAt: parsed.linkedAt,
+      lastUsed: parsed.lastUsed,
     };
   } catch (error) {
     console.error(`[UserLinks] Failed to parse link for ${discordUserId}:`, error);

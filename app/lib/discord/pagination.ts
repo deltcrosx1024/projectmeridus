@@ -1,6 +1,8 @@
 // lib/discord/pagination.ts
 // Pagination system for long lists with Discord buttons
+// Uses Redis for persistence across serverless instances
 
+import { redis } from '../redis';
 import { DiscordEmbed, InteractionResponseType } from '@/app/types/discord';
 
 export interface PaginatedData<T> {
@@ -19,8 +21,12 @@ export interface PaginationState {
   totalPages: number;
 }
 
-// In-memory pagination state storage
-const paginationStates = new Map<string, PaginationState>();
+const PAGINATION_PREFIX = 'meridus:pagination:';
+const PAGINATION_TTL = 600; // 10 minutes
+
+function getPaginationKey(id: string): string {
+  return `${PAGINATION_PREFIX}${id}`;
+}
 
 /**
  * Generate pagination buttons
@@ -77,33 +83,46 @@ export function generatePaginationButtons(
 }
 
 /**
- * Store pagination state
+ * Store pagination state in Redis
  */
 export function storePaginationState(state: PaginationState): string {
   const id = `${state.userId}:${state.command}:${Date.now()}`;
-  paginationStates.set(id, state);
+  const key = getPaginationKey(id);
   
-  // Auto-cleanup after 10 minutes
-  setTimeout(() => paginationStates.delete(id), 10 * 60 * 1000);
+  redis.setex(key, PAGINATION_TTL, JSON.stringify(state)).catch(err => {
+    console.error('[Pagination] Failed to store state:', err);
+  });
   
   return id;
 }
 
 /**
- * Get pagination state
+ * Get pagination state from Redis
  */
-export function getPaginationState(id: string): PaginationState | undefined {
-  return paginationStates.get(id);
+export async function getPaginationState(id: string): Promise<PaginationState | undefined> {
+  try {
+    const key = getPaginationKey(id);
+    const data = await redis.get<string>(key);
+    if (!data) return undefined;
+    
+    if (typeof data === 'string') {
+      return JSON.parse(data);
+    }
+    return data as PaginationState;
+  } catch (err) {
+    console.error('[Pagination] Failed to get state:', err);
+    return undefined;
+  }
 }
 
 /**
  * Handle pagination button click
  */
-export function handlePagination(
+export async function handlePagination(
   stateId: string,
   action: 'first' | 'prev' | 'next' | 'last'
-): { page: number; state: PaginationState | null } {
-  const state = getPaginationState(stateId);
+): Promise<{ page: number; state: PaginationState | null }> {
+  const state = await getPaginationState(stateId);
   if (!state) return { page: 1, state: null };
   
   let newPage = state.currentPage;
@@ -124,7 +143,12 @@ export function handlePagination(
   }
   
   state.currentPage = newPage;
-  paginationStates.set(stateId, state);
+  
+  // Update in Redis
+  const key = getPaginationKey(stateId);
+  await redis.setex(key, PAGINATION_TTL, JSON.stringify(state)).catch(err => {
+    console.error('[Pagination] Failed to update state:', err);
+  });
   
   return { page: newPage, state };
 }

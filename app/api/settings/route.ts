@@ -10,19 +10,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Parse cookies properly
-    const cookieMap = new Map<string, string>();
-    cookieHeader.split(';').forEach(cookie => {
-      const [key, ...valueParts] = cookie.trim().split('=');
-      if (key) {
-        cookieMap.set(key, valueParts.join('='));
-      }
-    });
+    // Parse cookies properly - consistent with POST method
+    const cookies = Object.fromEntries(
+      cookieHeader.split('; ').map(c => {
+        const [key, ...value] = c.split('=');
+        return [key, value.join('=')];
+      })
+    );
 
     // Try to get user ID from either GitHub or Discord
     let userId: string | null = null;
     
-    const githubUserCookie = cookieMap.get('github_user');
+    const githubUserCookie = cookies.github_user;
     if (githubUserCookie) {
       try {
         const ghUser = JSON.parse(decodeURIComponent(githubUserCookie));
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const discordUserCookie = cookieMap.get('discord_user');
+    const discordUserCookie = cookies.discord_user;
     if (!userId && discordUserCookie) {
       try {
         const discordUser = JSON.parse(decodeURIComponent(discordUserCookie));

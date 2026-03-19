@@ -360,7 +360,7 @@ function createResponse(data: unknown, status = 200): Response {
   });
 }
 
-function createErrorResponse(message: string, status = 200): Response {
+function createErrorResponse(message: string, status = 400): Response {
   return createResponse({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
     data: { content: message },

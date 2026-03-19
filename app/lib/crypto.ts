@@ -27,8 +27,10 @@ async function getKey(): Promise<CryptoKey> {
  */
 export async function encryptToken(plainText: string): Promise<string> {
   if (!ENCRYPTION_KEY) {
-    // Fallback: base64 encode only (not secure, for dev only)
-    return `plain:${btoa(plainText)}`;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY environment variable is required in production');
+    }
+    throw new Error('ENCRYPTION_KEY not configured - tokens will not be encrypted');
   }
 
   try {
@@ -60,9 +62,19 @@ export async function encryptToken(plainText: string): Promise<string> {
  * Expects base64-encoded string from encryptToken
  */
 export async function decryptToken(cipherText: string): Promise<string> {
-  if (!ENCRYPTION_KEY || cipherText.startsWith('plain:')) {
-    // Fallback: base64 decode only
-    return atob(cipherText.replace('plain:', ''));
+  if (!ENCRYPTION_KEY) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ENCRYPTION_KEY environment variable is required in production');
+    }
+    // Only allow plain: prefix in development for testing
+    if (cipherText.startsWith('plain:')) {
+      return atob(cipherText.replace('plain:', ''));
+    }
+    throw new Error('ENCRYPTION_KEY not configured');
+  }
+
+  if (cipherText.startsWith('plain:')) {
+    throw new Error('Cannot decrypt plain-text token - ENCRYPTION_KEY was not set during encryption');
   }
 
   try {
