@@ -1,14 +1,16 @@
 // lib/discord/cooldowns.ts
 // Command cooldown system to prevent spam
+// Uses Redis for persistence across serverless instances
+
+import { redis } from '../redis';
+
+const COOLDOWN_PREFIX = 'meridus:cooldown:';
 
 interface CooldownEntry {
   userId: string;
   command: string;
   timestamp: number;
 }
-
-// In-memory cooldown storage (cleared on server restart)
-const cooldowns = new Map<string, number>();
 
 // Default cooldowns in seconds
 export const DEFAULT_COOLDOWNS: Record<string, number> = {
@@ -26,39 +28,76 @@ export const DEFAULT_COOLDOWNS: Record<string, number> = {
   default: 5,
 };
 
+function getCooldownKey(userId: string, command: string): string {
+  return `${COOLDOWN_PREFIX}${userId}:${command}`;
+}
+
 /**
  * Check if user is on cooldown for a command
  * Returns remaining seconds if on cooldown, 0 if not
  */
-export function checkCooldown(userId: string, command: string): number {
-  const key = `${userId}:${command}`;
+export async function checkCooldown(userId: string, command: string): Promise<number> {
+  const key = getCooldownKey(userId, command);
   const cooldownSeconds = DEFAULT_COOLDOWNS[command] || DEFAULT_COOLDOWNS.default;
-  const lastUsed = cooldowns.get(key);
   
-  if (!lastUsed) {
+  try {
+    const data = await redis.get<string>(key);
+    if (!data) return 0;
+    
+    const entry = JSON.parse(data);
+    const lastUsed = entry.timestamp;
+    
+    const now = Date.now();
+    const elapsed = (now - lastUsed) / 1000;
+    const remaining = Math.ceil(cooldownSeconds - elapsed);
+    
+    return remaining > 0 ? remaining : 0;
+  } catch (err) {
+    console.error('[Cooldowns] Error checking cooldown:', err);
     return 0;
   }
-  
-  const now = Date.now();
-  const elapsed = (now - lastUsed) / 1000;
-  const remaining = Math.ceil(cooldownSeconds - elapsed);
-  
-  return remaining > 0 ? remaining : 0;
 }
 
 /**
  * Set cooldown for a user and command
  */
-export function setCooldown(userId: string, command: string): void {
-  const key = `${userId}:${command}`;
-  cooldowns.set(key, Date.now());
+export async function setCooldown(userId: string, command: string): Promise<void> {
+  const key = getCooldownKey(userId, command);
+  const cooldownSeconds = DEFAULT_COOLDOWNS[command] || DEFAULT_COOLDOWNS.default;
+  
+  const entry: CooldownEntry = {
+    userId,
+    command,
+    timestamp: Date.now(),
+  };
+  
+  try {
+    await redis.setex(key, cooldownSeconds, JSON.stringify(entry));
+  } catch (err) {
+    console.error('[Cooldowns] Error setting cooldown:', err);
+  }
 }
 
 /**
  * Clear all cooldowns (for admin use)
  */
-export function clearCooldowns(): void {
-  cooldowns.clear();
+export async function clearCooldowns(): Promise<void> {
+  try {
+    const keys: string[] = [];
+    let cursor = '0';
+    
+    do {
+      const result = await redis.scan(cursor, { match: `${COOLDOWN_PREFIX}*`, count: 100 });
+      cursor = result[0];
+      keys.push(...result[1]);
+    } while (cursor !== '0');
+    
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch (err) {
+    console.error('[Cooldowns] Error clearing cooldowns:', err);
+  }
 }
 
 /**

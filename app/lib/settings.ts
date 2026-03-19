@@ -44,8 +44,6 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
     const key = getSettingsKey(userId);
     const data = await redis.get(key);
     
-    console.log('[Settings] Redis get result:', typeof data, data);
-    
     if (!data) {
       return DEFAULT_SETTINGS;
     }
@@ -57,7 +55,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
     } else if (typeof data === 'object') {
       parsed = data;
     } else {
-      throw new Error(`Unexpected data type: ${typeof data}, value: ${String(data)}`);
+      throw new Error(`Unexpected data type: ${typeof data}`);
     }
     
     return { ...DEFAULT_SETTINGS, ...parsed };

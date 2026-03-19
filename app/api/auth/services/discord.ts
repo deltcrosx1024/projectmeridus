@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { linkUser } from "@/app/lib/userLinks";
 
-const BOT_CLIENT_ID = "1468966026304557125";
-const BOT_INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${BOT_CLIENT_ID}&permissions=8&response_type=code&redirect_uri=https%3A%2F%2Fwww.meridusdev.in.th%2Fapi%2Fauth%2Fcallback%3Fservice%3Ddiscord&integration_type=0&scope=webhook.incoming+applications.commands+bot`;
+const BOT_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
+const BOT_INVITE_URL = BOT_CLIENT_ID 
+  ? `https://discord.com/oauth2/authorize?client_id=${BOT_CLIENT_ID}&permissions=8&response_type=code&redirect_uri=https%3A%2F%2Fwww.meridusdev.in.th%2Fapi%2Fauth%2Fcallback%3Fservice%3Ddiscord&integration_type=0&scope=webhook.incoming+applications.commands+bot`
+  : '';
 
 /**
  * Check if user has the bot on any server they administer
@@ -40,6 +42,11 @@ async function checkBotInUserGuilds(accessToken: string): Promise<boolean> {
     }
 
     // Check if bot is in any of these guilds
+    if (!BOT_CLIENT_ID) {
+      console.warn("[Discord] BOT_CLIENT_ID not configured, cannot check guild membership");
+      return false;
+    }
+    
     for (const guild of adminGuilds) {
       try {
         // Try to fetch bot member from guild - this requires bot token
@@ -144,6 +151,11 @@ export async function handleDiscord(code: string, request: Request) {
   if (!hasBot) {
     // Bot not found - redirect to invite with cookies set first
     console.log("[Discord] Bot not in guilds, redirecting to invite");
+
+    if (!BOT_INVITE_URL) {
+      console.error("[Discord] BOT_CLIENT_ID not configured - cannot redirect to invite");
+      return NextResponse.json({ error: 'Bot not configured - please contact admin' }, { status: 500 });
+    }
 
     const res = NextResponse.redirect(BOT_INVITE_URL);
 

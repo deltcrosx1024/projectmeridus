@@ -102,11 +102,11 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'ping');
+        const remaining = await checkCooldown(userId, 'ping');
         if (remaining > 0) {
           return { content: formatCooldownMessage(remaining), ephemeral: true };
         }
-        setCooldown(userId, 'ping');
+        await setCooldown(userId, 'ping');
       }
       
       const latency = Date.now();
@@ -460,11 +460,11 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'repos');
+        const remaining = await checkCooldown(userId, 'repos');
         if (remaining > 0) {
           return { content: formatCooldownMessage(remaining), ephemeral: true };
         }
-        setCooldown(userId, 'repos');
+        await setCooldown(userId, 'repos');
       }
       
       const access = await checkGitHubAccess(interaction);
@@ -556,9 +556,9 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'issues');
+        const remaining = await checkCooldown(userId, 'issues');
         if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
-        setCooldown(userId, 'issues');
+        await setCooldown(userId, 'issues');
       }
       
       const access = await checkGitHubAccess(interaction);
@@ -646,9 +646,9 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'commits');
+        const remaining = await checkCooldown(userId, 'commits');
         if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
-        setCooldown(userId, 'commits');
+        await setCooldown(userId, 'commits');
       }
       
       const access = await checkGitHubAccess(interaction);
@@ -743,9 +743,9 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'search');
+        const remaining = await checkCooldown(userId, 'search');
         if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
-        setCooldown(userId, 'search');
+        await setCooldown(userId, 'search');
       }
       
       const access = await checkGitHubAccess(interaction);
@@ -840,9 +840,9 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'pr');
+        const remaining = await checkCooldown(userId, 'pr');
         if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
-        setCooldown(userId, 'pr');
+        await setCooldown(userId, 'pr');
       }
       
       const access = await checkGitHubAccess(interaction);
@@ -1007,9 +1007,9 @@ export const commands: Record<string, DiscordCommand> = {
     execute: async (interaction) => {
       const userId = getUserId(interaction);
       if (userId) {
-        const remaining = checkCooldown(userId, 'mystats');
+        const remaining = await checkCooldown(userId, 'mystats');
         if (remaining > 0) return { content: formatCooldownMessage(remaining), ephemeral: true };
-        setCooldown(userId, 'mystats');
+        await setCooldown(userId, 'mystats');
       }
       
       const access = await checkGitHubAccess(interaction);
