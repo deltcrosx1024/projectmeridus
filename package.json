@@ -17,6 +17,7 @@
     "highcharts": "^12.5.0",
     "highcharts-react-official": "^3.2.3",
     "next": "16.1.5",
+    "next": "16.1.7",
     "next-auth": "^4.24.13",
     "octokit": "^5.0.5",
     "pm2": "^6.0.14",
