@@ -8,6 +8,8 @@
   --muted: #A1A1AA;
   --accent: #0070F3;
   --accent-hover: #0060df;
+  --highcharts-background-color-darkmode: #242526;
+  --highcharts-background-color-lightmode: #ffffff;
 }
 
 @theme inline {

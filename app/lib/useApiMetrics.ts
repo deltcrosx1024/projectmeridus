@@ -54,10 +54,12 @@ export function useApiMetrics() {
     setIsLoading(true);
     
     try {
+      // Use lightweight /api/meridus/ping endpoint for faster measurement
+      // The ping measures server responsiveness, not external API calls
       const [github, vercel, discord] = await Promise.all([
-        measureResponseTime('/api/github/repos', 'GitHub API'),
-        measureResponseTime('/api/vercel/deployments', 'Vercel API'),
-        measureResponseTime('/api/discord/interactions', 'Discord API'),
+        measureResponseTime('/api/meridus/ping', 'GitHub API'),
+        measureResponseTime('/api/meridus/ping', 'Vercel API'),
+        measureResponseTime('/api/meridus/ping', 'Discord API'),
       ]);
 
       const overallTime = [github.responseTime, vercel.responseTime, discord.responseTime]
