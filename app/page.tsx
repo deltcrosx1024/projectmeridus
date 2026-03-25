@@ -16,6 +16,7 @@ import Header from '@/app/components/header/Header';
 import HeroSection from '@/app/components/hero/HeroSection';
 import StatsGrid from '@/app/components/stats/StatsGrid';
 import DiscordStatus from '@/app/components/discord-status/DiscordStatus';
+import ApiMetrics from '@/app/components/api-metrics/ApiMetrics';
 import InsightsSection from '@/app/components/insights/InsightsSection';
 import CTASection from '@/app/components/cta/CTASection';
 import Footer from '@/app/components/footer/Footer';
@@ -40,6 +41,9 @@ export default function Home() {
 
         {/* ===== STATS GRID COMPONENT ===== */}
         <StatsGrid />
+
+        {/* ===== API METRICS SECTION (Collapsed by default on main page) ===== */}
+        <ApiMetrics defaultCollapsed={true} />
 
         {/* ===== DISCORD STATUS SECTION ===== */}
         <DiscordStatus />

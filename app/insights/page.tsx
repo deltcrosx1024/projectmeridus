@@ -5,6 +5,8 @@ import Footer from '@/app/components/footer/Footer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { useGitHubRepos, useGitHubIssues } from '@/app/lib/useGitHub';
 import ContributionGraph from '@/app/components/contributions/ContributionGraph';
+import ApiMetrics from '@/app/components/api-metrics/ApiMetrics';
+import DiscordStatus from '@/app/components/discord-status/DiscordStatus';
 
 export default function InsightsPage() {
   const { githubUser } = useAuth();
@@ -40,6 +42,17 @@ export default function InsightsPage() {
           <p className="text-[#A1A1AA]">
             Your GitHub activity overview
           </p>
+        </div>
+
+        {/* ===== API & STATUS SECTION ===== */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-white mb-6">
+            API & Status
+          </h2>
+          <ApiMetrics alwaysExpanded={true} />
+          <div className="mt-8">
+            <DiscordStatus />
+          </div>
         </div>
 
         {/* Contribution Graph & Language Breakdown */}
