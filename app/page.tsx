@@ -15,6 +15,7 @@
 import Header from '@/app/components/header/Header';
 import HeroSection from '@/app/components/hero/HeroSection';
 import StatsGrid from '@/app/components/stats/StatsGrid';
+import DiscordStatus from '@/app/components/discord-status/DiscordStatus';
 import InsightsSection from '@/app/components/insights/InsightsSection';
 import CTASection from '@/app/components/cta/CTASection';
 import Footer from '@/app/components/footer/Footer';
@@ -39,6 +40,9 @@ export default function Home() {
 
         {/* ===== STATS GRID COMPONENT ===== */}
         <StatsGrid />
+
+        {/* ===== DISCORD STATUS SECTION ===== */}
+        <DiscordStatus />
 
         {/* ===== INSIGHTS SECTION (Activity Frequency & Latest Commits) ===== */}
         <InsightsSection />
