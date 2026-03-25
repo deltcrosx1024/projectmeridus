@@ -8,6 +8,10 @@ import { Octokit } from 'octokit';
  * Accepts Authorization: Bearer <token> header or falls back to process.env.GITHUB_TOKEN
  * Query params:
  * - type=pull - returns pull requests instead of issues
+ * 
+ * Performance optimizations:
+ * - Reduced repo fetch to 30 (was 100)
+ * - Caching headers for faster repeat requests
  */
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -30,7 +34,7 @@ export async function GET(request: Request) {
     // Use the Search API across the user's repositories so we count issues/PRs
     // that exist in the repos the user owns or has access to. This returns
     // consistent counts even if the user didn't "create" the issue/PR.
-    const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 100 });
+    const reposRes = await octokit.rest.repos.listForAuthenticatedUser({ per_page: 30 });
     const repoQualifiers = (reposRes.data || []).map((r: any) => `repo:${r.owner.login}/${r.name}`);
 
     if (repoQualifiers.length === 0) return NextResponse.json([]);
@@ -39,14 +43,24 @@ export async function GET(request: Request) {
 
     if (type === 'pull') {
       const q = `${repoQuery} is:pr`;
-      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 100 });
-      return NextResponse.json(searchRes.data.items || []);
+      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 50 });
+      return NextResponse.json(searchRes.data.items || [], {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
+          'Vary': 'Cookie, Authorization',
+        },
+      });
     } else {
       const q = `${repoQuery} is:issue`;
-      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 100 });
+      const searchRes = await octokit.rest.search.issuesAndPullRequests({ q, per_page: 50 });
       // Filter out any PRs just in case
       const issues = (searchRes.data.items || []).filter((it: any) => !it.pull_request);
-      return NextResponse.json(issues);
+      return NextResponse.json(issues, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
+          'Vary': 'Cookie, Authorization',
+        },
+      });
     }
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });

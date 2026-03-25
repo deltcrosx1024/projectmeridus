@@ -10,6 +10,10 @@ import { Octokit } from 'octokit';
  * Query params:
  * - per_repo: number of commits per repository (default: 5)
  * - max_repos: maximum number of repositories to fetch (default: 10)
+ * 
+ * Performance optimizations:
+ * - Reduced default max_repos to 5 for faster response
+ * - Caching headers for CDN/browser
  */
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -27,7 +31,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const perRepo = parseInt(url.searchParams.get('per_repo') || '5', 10);
-  const maxRepos = parseInt(url.searchParams.get('max_repos') || '10', 10);
+  const maxRepos = parseInt(url.searchParams.get('max_repos') || '5', 10); // Reduced from 10 to 5
 
   try {
     const octokit = new Octokit({ auth: token });
@@ -74,7 +78,12 @@ export async function GET(request: Request) {
       .filter(commit => commit.date)
       .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
 
-    return NextResponse.json(flatCommits.slice(0, 20));
+    return NextResponse.json(flatCommits.slice(0, 20), {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
+        'Vary': 'Cookie, Authorization',
+      },
+    });
   } catch (err: any) {
     console.error('GitHub commits error:', err);
     return NextResponse.json({ error: err?.message ?? String(err) }, { status: 500 });
