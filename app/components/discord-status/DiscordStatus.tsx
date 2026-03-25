@@ -18,6 +18,7 @@ export default function DiscordStatus() {
     { status: 'degraded', label: 'Degraded', color: '#f59e0b' },
     { status: 'partial_outage', label: 'Partial Outage', color: '#f97316' },
     { status: 'major_outage', label: 'Major Outage', color: '#ef4444' },
+    { status: 'unknown', label: 'Unknown', color: '#A1A1AA' },
   ];
 
   if (isLoading) {

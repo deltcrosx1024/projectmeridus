@@ -46,17 +46,17 @@ export function useDiscordStatus() {
       const relevantServices = componentsData.components
         .filter((c: any) => {
           const name = c.name.toLowerCase();
-          return name.includes('api') || 
-                 name.includes('gateway') || 
-                 name.includes('media') || 
-                 name.includes('search') || 
-                 name.includes('voice') ||
-                 name.includes('cloud') ||
-                 name.includes('oauth') ||
-                 name.includes('cdn') ||
-                 name.includes('push') ||
-                 name.includes('developer') ||
-                 name.includes('interactions');
+          return !c.group && (
+            name.includes('api') || 
+            name.includes('gateway') || 
+            name.includes('media') || 
+            name.includes('search') || 
+            name.includes('voice') ||
+            name.includes('push') ||
+            name.includes('search') ||
+            name.includes('developer') ||
+            name.includes('interactions')
+          );
         })
         .map((c: any) => ({
           name: c.name,
@@ -107,6 +107,12 @@ export function getStatusColor(status: string): string {
       return '#f97316';
     case 'major_outage':
       return '#ef4444';
+    case 'major':
+      return '#ef4444';
+    case 'minor':
+      return '#f59e0b';
+    case 'critical':
+      return '#dc2626';
     default:
       return '#A1A1AA';
   }
@@ -122,6 +128,12 @@ export function getStatusLabel(status: string): string {
       return 'Partial Outage';
     case 'major_outage':
       return 'Major Outage';
+    case 'major':
+      return 'Major Outage';
+    case 'minor':
+      return 'Minor Outage';
+    case 'critical':
+      return 'Critical';
     default:
       return 'Unknown';
   }
