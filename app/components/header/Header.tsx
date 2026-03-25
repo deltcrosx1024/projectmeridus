@@ -45,7 +45,7 @@ export default function Header() {
           {/* ===== DESKTOP NAVIGATION ===== */}
           <nav className="hidden md:flex items-center gap-8">
             {NAV_ITEMS.map((item) => {
-              const href = `/${item.label.toLowerCase()}`;
+              const href = item.label === 'Docs' ? '/docs' : `/${item.label.toLowerCase()}`;
               return (
                 <Link
                   key={item.label}
@@ -245,7 +245,7 @@ export default function Header() {
           <div className="md:hidden mt-4 pb-4 border-t border-[#333333] pt-4">
             <nav className="flex flex-col gap-3">
               {NAV_ITEMS.map((item) => {
-                const href = `/${item.label.toLowerCase()}`;
+                const href = item.label === 'Docs' ? '/docs' : `/${item.label.toLowerCase()}`;
                 return (
                   <Link
                     key={item.label}

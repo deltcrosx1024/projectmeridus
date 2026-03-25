@@ -128,5 +128,6 @@ export const FOOTER_SECTIONS: FooterSection[] = [
 export const NAV_ITEMS = [
   { label: 'Repositories' },
   { label: 'Insights' },
+  { label: 'Docs' },
   { label: 'Settings' },
 ];
