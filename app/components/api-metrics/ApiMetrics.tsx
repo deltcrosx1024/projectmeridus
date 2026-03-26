@@ -21,40 +21,40 @@ if (typeof document !== 'undefined') {
     .highcharts-tooltip-box { fill: #1a1a1a !important; stroke: #333333 !important; }
   `;
   document.head.appendChild(style);
-}
-
-Highcharts.setOptions({
-  chart: {
-    backgroundColor: '#0f0f0f',
-    plotBackgroundColor: '#0f0f0f',
-    plotBorderColor: '#333333',
-  },
-  colors: ['#22c55e', '#0070F3', '#5865F2', '#f59e0b'],
-  title: { style: { color: '#e4e4e7' } },
-  xAxis: {
-    lineColor: '#333333',
-    tickColor: '#333333',
-    labels: { style: { color: '#e4e4e7' } },
-  },
-  yAxis: {
-    gridLineColor: '#222222',
-    labels: { style: { color: '#e4e4e7' } },
+  
+  Highcharts.setOptions({
+    chart: {
+      backgroundColor: '#0f0f0f',
+      plotBackgroundColor: '#0f0f0f',
+      plotBorderColor: '#333333',
+    },
+    colors: ['#22c55e', '#0070F3', '#5865F2', '#f59e0b'],
     title: { style: { color: '#e4e4e7' } },
-  },
-  legend: {
-    backgroundColor: '#0f0f0f',
-    borderColor: '#333333',
-    borderWidth: 1,
-    itemStyle: { color: '#e4e4e7', fontWeight: '500' },
-    itemHoverStyle: { color: '#60a5fa' },
-    itemHiddenStyle: { color: '#71717a' },
-  },
-  tooltip: {
-    backgroundColor: '#1a1a1a',
-    borderColor: '#333333',
-    style: { color: '#ffffff' },
-  },
-});
+    xAxis: {
+      lineColor: '#333333',
+      tickColor: '#333333',
+      labels: { style: { color: '#e4e4e7' } },
+    },
+    yAxis: {
+      gridLineColor: '#222222',
+      labels: { style: { color: '#e4e4e7' } },
+      title: { style: { color: '#e4e4e7' } },
+    },
+    legend: {
+      backgroundColor: '#0f0f0f',
+      borderColor: '#333333',
+      borderWidth: 1,
+      itemStyle: { color: '#e4e4e7', fontWeight: '500' },
+      itemHoverStyle: { color: '#60a5fa' },
+      itemHiddenStyle: { color: '#71717a' },
+    },
+    tooltip: {
+      backgroundColor: '#1a1a1a',
+      borderColor: '#333333',
+      style: { color: '#ffffff' },
+    },
+  });
+}
 
 interface MetricHistory {
   timestamp: number;
