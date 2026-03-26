@@ -4,6 +4,58 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Highcharts from 'highcharts';
 import { useApiMetrics, formatResponseTime, getResponseTimeColor } from '@/app/lib/useApiMetrics';
 
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .highcharts-background { fill: #0f0f0f !important; }
+    .highcharts-plot-background { fill: #0f0f0f !important; }
+    .highcharts-root { background-color: #0f0f0f !important; }
+    .highcharts-container { background-color: #0f0f0f !important; }
+    .highcharts-legend-box { fill: #0f0f0f !important; stroke: #333333 !important; }
+    .highcharts-axis-labels text { fill: #e4e4e7 !important; }
+    .highcharts-axis-title text { fill: #e4e4e7 !important; }
+    .highcharts-grid-line { stroke: #222222 !important; }
+    .highcharts-tick { stroke: #333333 !important; }
+    .highcharts-axis-line { stroke: #333333 !important; }
+    .highcharts-legend-item text { fill: #e4e4e7 !important; }
+    .highcharts-tooltip-box { fill: #1a1a1a !important; stroke: #333333 !important; }
+  `;
+  document.head.appendChild(style);
+}
+
+Highcharts.setOptions({
+  chart: {
+    backgroundColor: '#0f0f0f',
+    plotBackgroundColor: '#0f0f0f',
+    plotBorderColor: '#333333',
+  },
+  colors: ['#22c55e', '#0070F3', '#5865F2', '#f59e0b'],
+  title: { style: { color: '#e4e4e7' } },
+  xAxis: {
+    lineColor: '#333333',
+    tickColor: '#333333',
+    labels: { style: { color: '#e4e4e7' } },
+  },
+  yAxis: {
+    gridLineColor: '#222222',
+    labels: { style: { color: '#e4e4e7' } },
+    title: { style: { color: '#e4e4e7' } },
+  },
+  legend: {
+    backgroundColor: '#0f0f0f',
+    borderColor: '#333333',
+    borderWidth: 1,
+    itemStyle: { color: '#e4e4e7', fontWeight: '500' },
+    itemHoverStyle: { color: '#60a5fa' },
+    itemHiddenStyle: { color: '#71717a' },
+  },
+  tooltip: {
+    backgroundColor: '#1a1a1a',
+    borderColor: '#333333',
+    style: { color: '#ffffff' },
+  },
+});
+
 interface MetricHistory {
   timestamp: number;
   value: number | null;
@@ -12,6 +64,27 @@ interface MetricHistory {
 interface ApiMetricsProps {
   defaultCollapsed?: boolean;
   alwaysExpanded?: boolean;
+}
+
+function forceDarkChartBackground(chart: Highcharts.Chart) {
+  const selectors = [
+    '.highcharts-background',
+    '.highcharts-plot-background',
+  ];
+
+  selectors.forEach((sel) => {
+    const el = chart.container.querySelector(sel);
+    if (el instanceof SVGElement) {
+      el.style.setProperty('fill', '#0f0f0f', 'important');
+    }
+  });
+
+  // Force all text elements to the right color
+  chart.container.querySelectorAll('text').forEach((el) => {
+    if (el instanceof SVGElement) {
+      el.style.setProperty('fill', '#e4e4e7', 'important');
+    }
+  });
 }
 
 export default function ApiMetrics({
@@ -36,6 +109,8 @@ export default function ApiMetrics({
     overall: [],
   });
 
+  const hasHistory = history.github.length > 0;
+
   useEffect(() => {
     if (!isLoading && metrics.github.lastUpdated) {
       const now = Date.now();
@@ -58,7 +133,17 @@ export default function ApiMetrics({
 
   const chartOptions = useMemo<Highcharts.Options>(() => {
     return {
+      
       chart: {
+        styledMode: false,
+        events: {
+          load: function (this: Highcharts.Chart) {
+            forceDarkChartBackground(this);
+          },
+          redraw: function (this: Highcharts.Chart) {
+            forceDarkChartBackground(this);
+          },
+        },
         type: 'line',
         height: 300,
         backgroundColor: '#0f0f0f',
@@ -81,7 +166,7 @@ export default function ApiMetrics({
         tickColor: '#333333',
         labels: {
           style: {
-            color: '#A1A1AA',
+            color: '#333333',
             fontSize: '11px',
           },
         },
@@ -91,20 +176,23 @@ export default function ApiMetrics({
         title: {
           text: 'Response Time (ms)',
           style: {
-            color: '#A1A1AA',
+            color: '#333333',
           },
         },
         labels: {
           style: {
-            color: '#A1A1AA',
+            color: '#333333',
             fontSize: '11px',
           },
         },
         gridLineColor: '#222222',
       },
       legend: {
+        backgroundColor: '#0f0f0f',
+        borderColor: '#333333',
+        borderWidth: 1,
         itemStyle: {
-          color: '#ffffff',
+          color: '#e4e4e7',
           fontWeight: '500',
         },
         itemHoverStyle: {
@@ -183,17 +271,18 @@ export default function ApiMetrics({
   }, [history]);
 
   useEffect(() => {
-    if (isLoading) return;
     if (isCollapsed && !alwaysExpanded) return;
     if (!chartRef.current) return;
+    if (!hasHistory) return;
 
     if (!chartInstanceRef.current) {
       chartInstanceRef.current = Highcharts.chart(chartRef.current, chartOptions);
-      return;
+    } else {
+      chartInstanceRef.current.update(chartOptions, true, true);
+      chartInstanceRef.current.reflow();
+      forceDarkChartBackground(chartInstanceRef.current);
     }
-
-    chartInstanceRef.current.update(chartOptions, true, true);
-  }, [chartOptions, isLoading, isCollapsed, alwaysExpanded]);
+  }, [chartOptions, isCollapsed, alwaysExpanded, hasHistory]);
 
   useEffect(() => {
     if (isCollapsed && !alwaysExpanded && chartInstanceRef.current) {
@@ -211,7 +300,7 @@ export default function ApiMetrics({
     };
   }, []);
 
-  if (isLoading && !isCollapsed) {
+  if (isLoading && !isCollapsed && !hasHistory) {
     return (
       <div className="bg-[#0f0f0f] border border-[#333333] rounded-lg p-6 mb-16">
         <div className="animate-pulse">
@@ -263,8 +352,13 @@ export default function ApiMetrics({
 
       {(!isCollapsed || alwaysExpanded) && (
         <>
-          <div className="rounded-lg p-4 bg-[#0f0f0f]">
+          <div className="relative rounded-lg p-4 bg-[#0f0f0f]">
             <div ref={chartRef} />
+            {isLoading && hasHistory && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
+                <span className="text-sm text-[#A1A1AA]">Refreshing...</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">

@@ -204,3 +204,13 @@ input::placeholder, textarea::placeholder {
 ::-webkit-scrollbar-thumb:hover {
   background: #444444;
 }
+
+.highcharts-container,
+.highcharts-background,
+.highcharts-plot-background {
+  fill: #0f0f0f !important;
+}
+
+.highcharts-root {
+  --highcharts-background-color: #0f0f0f;
+}
