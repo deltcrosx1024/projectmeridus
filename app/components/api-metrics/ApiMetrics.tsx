@@ -90,7 +90,7 @@ function forceDarkChartBackground(chart: Highcharts.Chart) {
 export default function ApiMetrics({
   defaultCollapsed = false,
   alwaysExpanded = false,
-}: ApiMetricsProps) {
+}: Readonly<ApiMetricsProps>) {
   const { metrics, isLoading, refetch } = useApiMetrics();
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
@@ -275,12 +275,12 @@ export default function ApiMetrics({
     if (!chartRef.current) return;
     if (!hasHistory) return;
 
-    if (!chartInstanceRef.current) {
-      chartInstanceRef.current = Highcharts.chart(chartRef.current, chartOptions);
-    } else {
+    if (chartInstanceRef.current) {
       chartInstanceRef.current.update(chartOptions, true, true);
       chartInstanceRef.current.reflow();
       forceDarkChartBackground(chartInstanceRef.current);
+    } else {
+      chartInstanceRef.current = Highcharts.chart(chartRef.current, chartOptions);
     }
   }, [chartOptions, isCollapsed, alwaysExpanded, hasHistory]);
 

@@ -21,10 +21,12 @@ async function getLinkedUsersForRepo(repoFullName: string): Promise<string[]> {
     
     for (const key of keys) {
       try {
-        const data = await redis.get<string>(key);
+        const data = await redis.get(key);
         if (data) {
-          const parsed = JSON.parse(data);
-          users.push(parsed.discordUserId);
+          const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+          if (parsed?.discordUserId) {
+            users.push(parsed.discordUserId);
+          }
         }
       } catch (err) {
         console.error('[GitHub Webhook] Error getting linked user:', err);

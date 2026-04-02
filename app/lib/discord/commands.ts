@@ -16,7 +16,7 @@ import {
   getSubscriptionCount,
   getRepoSubscriptions
 } from "@/app/lib/subscriptions";
-import { getUserLink, hasLinkedGitHub } from "@/app/lib/userLinks";
+import { getUserLink, hasLinkedGitHub, unlinkUser, linkUser } from "@/app/lib/userLinks";
 import { Octokit } from "octokit";
 import { 
   checkCooldown, 
@@ -1190,6 +1190,724 @@ export const commands: Record<string, DiscordCommand> = {
         return { embeds: [embed] };
       } catch (err: any) {
         return { content: formatErrorMessage(err, 'actions') };
+      }
+    }
+  },
+
+  // 19. Branch - List repository branches
+  branch: {
+    name: 'branch',
+    description: 'List repository branches',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'limit',
+        description: 'Number of branches to show (max 20)',
+        type: 4, // INTEGER
+        required: false
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const limit = Math.min((args.limit as number) || 10, 20);
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        const res = await octokit.rest.repos.listBranches({ owner, repo: repoName, per_page: limit });
+
+        if (res.data.length === 0) {
+          return { content: `🌿 No branches found in **${repo}**.` };
+        }
+
+        const branchList = res.data.map((b: { name: string; protected: boolean }) =>
+          `• \`${b.name}\`${b.protected ? ' 🔒' : ''}`
+        ).join('\n');
+
+        const embed: DiscordEmbed = {
+          title: `🌿 Branches in ${repo}`,
+          description: branchList,
+          color: EmbedColors.GITHUB,
+          footer: { text: `${res.data.length} branch(es)` }
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'branch') };
+      }
+    }
+  },
+
+  // 20. Contributors - Show repository contributors
+  contributors: {
+    name: 'contributors',
+    description: 'Show repository contributors',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'limit',
+        description: 'Number of contributors to show (max 20)',
+        type: 4, // INTEGER
+        required: false
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const limit = Math.min((args.limit as number) || 10, 20);
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        const res = await octokit.rest.repos.listContributors({ owner, repo: repoName, per_page: limit });
+
+        if (!res.data || res.data.length === 0) {
+          return { content: `👥 No contributors found for **${repo}**.` };
+        }
+
+        const list = (res.data as { login?: string; contributions: number }[]).map((c, i) =>
+          `${i + 1}. **${c.login ?? 'unknown'}** — ${c.contributions} commit(s)`
+        ).join('\n');
+
+        const embed: DiscordEmbed = {
+          title: `👥 Contributors in ${repo}`,
+          description: list,
+          color: EmbedColors.PRIMARY,
+          footer: { text: `Top ${res.data.length} contributor(s)` }
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'contributors') };
+      }
+    }
+  },
+
+  // 21. Issue - Subcommands for issue management
+  issue: {
+    name: 'issue',
+    description: 'Manage GitHub issues',
+    options: [
+      {
+        name: 'create',
+        description: 'Create a new issue',
+        type: 1, // SUB_COMMAND
+        options: [
+          {
+            name: 'repo',
+            description: 'Repository (owner/repo)',
+            type: 3, // STRING
+            required: true,
+            autocomplete: true
+          },
+          {
+            name: 'title',
+            description: 'Issue title',
+            type: 3, // STRING
+            required: true
+          },
+          {
+            name: 'body',
+            description: 'Issue body / description',
+            type: 3, // STRING
+            required: false
+          },
+          {
+            name: 'labels',
+            description: 'Comma-separated labels',
+            type: 3, // STRING
+            required: false
+          }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      // Resolve subcommand options one level deep
+      const subcommand = interaction.data?.options?.[0];
+      if (!subcommand || subcommand.name !== 'create') {
+        return { content: '❌ Unknown subcommand. Use `/issue create`.' };
+      }
+
+      const subOptions: Record<string, string> = {};
+      for (const opt of subcommand.options ?? []) {
+        if (opt.value !== undefined) subOptions[opt.name] = String(opt.value);
+      }
+
+      const repo = subOptions.repo ?? '';
+      const title = subOptions.title ?? '';
+      const body = subOptions.body ?? '';
+      const labelsInput = subOptions.labels ?? '';
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+      if (!title) {
+        return { content: '❌ Issue title is required.' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        const labels = labelsInput ? labelsInput.split(',').map(l => l.trim()).filter(l => l) : undefined;
+        const res = await octokit.rest.issues.create({ owner, repo: repoName, title, body, labels });
+
+        const labelDisplay = res.data.labels?.map((l) => (typeof l === 'string' ? l : l.name)).filter(Boolean).join(', ') || 'None';
+        const embed: DiscordEmbed = {
+          title: '✅ Issue Created',
+          description: `**[${res.data.title}](${res.data.html_url})**`,
+          color: EmbedColors.SUCCESS,
+          fields: [
+            { name: '📁 Repository', value: repo, inline: true },
+            { name: '#️⃣ Number', value: `#${res.data.number}`, inline: true },
+            { name: '🏷️ Labels', value: labelDisplay, inline: true }
+          ]
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'issue create') };
+      }
+    }
+  },
+
+  // 22. Merge - Merge a pull request
+  merge: {
+    name: 'merge',
+    description: 'Merge a pull request',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'pr_number',
+        description: 'Pull request number',
+        type: 4, // INTEGER
+        required: true
+      },
+      {
+        name: 'method',
+        description: 'Merge method (default: merge)',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'merge', value: 'merge' },
+          { name: 'squash', value: 'squash' },
+          { name: 'rebase', value: 'rebase' }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const prNumber = args.pr_number as number;
+      const method = (args.method as string) || 'merge';
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        const res = await octokit.rest.pulls.merge({
+          owner,
+          repo: repoName,
+          pull_number: prNumber,
+          merge_method: method as 'merge' | 'squash' | 'rebase'
+        });
+
+        const embed: DiscordEmbed = {
+          title: '✅ Pull Request Merged',
+          description: res.data.message ?? `PR #${prNumber} merged successfully.`,
+          color: EmbedColors.SUCCESS,
+          fields: [
+            { name: '📁 Repository', value: repo, inline: true },
+            { name: '#️⃣ PR', value: `#${prNumber}`, inline: true },
+            { name: '🔀 Method', value: method, inline: true }
+          ]
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'merge') };
+      }
+    }
+  },
+
+  // 23. Release - List repository releases
+  release: {
+    name: 'release',
+    description: 'List repository releases',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'limit',
+        description: 'Number of releases to show (max 10)',
+        type: 4, // INTEGER
+        required: false
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const limit = Math.min((args.limit as number) || 5, 10);
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        const res = await octokit.rest.repos.listReleases({ owner, repo: repoName, per_page: limit });
+
+        if (res.data.length === 0) {
+          return { content: `🚀 No releases found for **${repo}**.` };
+        }
+
+        const releaseList = res.data.map((r: { tag_name: string; name: string | null; html_url: string; prerelease: boolean; published_at: string | null }) => {
+          const pre = r.prerelease ? ' `pre-release`' : '';
+          const date = r.published_at ? new Date(r.published_at).toLocaleDateString() : 'unknown date';
+          return `• **[${r.tag_name}](${r.html_url})**${pre} — ${r.name ?? r.tag_name} _(${date})_`;
+        }).join('\n');
+
+        const embed: DiscordEmbed = {
+          title: `🚀 Releases for ${repo}`,
+          description: releaseList,
+          color: EmbedColors.SUCCESS,
+          footer: { text: `Latest ${res.data.length} release(s)` }
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'release') };
+      }
+    }
+  },
+
+  // 24. Repo - Subcommands for repository information
+  repo: {
+    name: 'repo',
+    description: 'Repository management commands',
+    options: [
+      {
+        name: 'info',
+        description: 'Show detailed repository information',
+        type: 1, // SUB_COMMAND
+        options: [
+          {
+            name: 'repo',
+            description: 'Repository (owner/repo)',
+            type: 3, // STRING
+            required: true,
+            autocomplete: true
+          }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const subcommand = interaction.data?.options?.[0];
+      if (!subcommand || subcommand.name !== 'info') {
+        return { content: '❌ Unknown subcommand. Use `/repo info`.' };
+      }
+
+      const subOptions: Record<string, string> = {};
+      for (const opt of subcommand.options ?? []) {
+        if (opt.value !== undefined) subOptions[opt.name] = String(opt.value);
+      }
+
+      const repoArg = subOptions.repo ?? '';
+
+      if (!isValidRepoFormat(repoArg)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repoArg.split('/');
+
+      try {
+        const { data: r } = await octokit.rest.repos.get({ owner, repo: repoName });
+
+        const embed: DiscordEmbed = {
+          title: `📁 ${r.full_name}`,
+          description: r.description ?? 'No description provided.',
+          color: EmbedColors.GITHUB,
+          fields: [
+            { name: '⭐ Stars', value: r.stargazers_count.toString(), inline: true },
+            { name: '🍴 Forks', value: r.forks_count.toString(), inline: true },
+            { name: '👁️ Watchers', value: r.watchers_count.toString(), inline: true },
+            { name: '💻 Language', value: r.language ?? 'N/A', inline: true },
+            { name: '🔓 Visibility', value: r.private ? 'Private' : 'Public', inline: true },
+            { name: '🐛 Open Issues', value: r.open_issues_count.toString(), inline: true },
+            { name: '📅 Created', value: new Date(r.created_at).toLocaleDateString(), inline: true },
+            { name: '🔄 Updated', value: new Date(r.updated_at).toLocaleDateString(), inline: true },
+            { name: '🌿 Default Branch', value: r.default_branch, inline: true }
+          ],
+          footer: { text: r.html_url }
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'repo info') };
+      }
+    }
+  },
+
+  // 25. Star - Star a GitHub repository
+  star: {
+    name: 'star',
+    description: 'Star a GitHub repository',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository to star (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        await octokit.rest.activity.starRepoForAuthenticatedUser({ owner, repo: repoName });
+
+        return {
+          content: `⭐ Successfully starred **${repo}**!`,
+        };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'star') };
+      }
+    }
+  },
+
+  // 26. User - Subcommands for account linking
+  user: {
+    name: 'user',
+    description: 'Manage your account link with projectmeridus',
+    options: [
+      {
+        name: 'link',
+        description: 'Link your Discord account with projectmeridus',
+        type: 1, // SUB_COMMAND
+        options: [
+          {
+            name: 'token',
+            description: 'GitHub personal access token (optional — usually linked via website)',
+            type: 3, // STRING
+            required: false
+          }
+        ]
+      },
+      {
+        name: 'status',
+        description: 'Check your account link status',
+        type: 1, // SUB_COMMAND
+      },
+      {
+        name: 'unlink',
+        description: 'Unlink your Discord account from projectmeridus',
+        type: 1, // SUB_COMMAND
+      }
+    ],
+    execute: async (interaction) => {
+      const userId = getUserId(interaction);
+      if (!userId) return { content: '❌ Could not identify user.' };
+
+      const subcommandName = interaction.data?.options?.[0]?.name;
+
+      switch (subcommandName) {
+        case 'link': {
+          // Check if user provided a token directly (advanced/admin use)
+          const linkSubOpts = interaction.data?.options?.[0]?.options ?? [];
+          const providedToken = linkSubOpts.find(o => o.name === 'token')?.value as string | undefined;
+
+          if (providedToken) {
+            // Token provided — store it via linkUser
+            await linkUser(userId, providedToken);
+            return {
+              content: `✅ **GitHub token linked successfully.**\nYour account is now connected to projectmeridus.`,
+              ephemeral: true
+            };
+          }
+
+          // No token — already linked?
+          const alreadyLinked = await hasLinkedGitHub(userId);
+          if (alreadyLinked) {
+            return {
+              content: `✅ **Account already linked.**\nUse \`/user status\` to view details or \`/user unlink\` to remove the link.`,
+              ephemeral: true
+            };
+          }
+
+          return {
+            content: `🔗 **Link your Discord account with projectmeridus**\n\nVisit the link below and sign in with both Discord and GitHub:\n🌐 <https://www.meridusdev.in.th>\n\nOnce linked, your GitHub token will be securely stored.`,
+            ephemeral: true
+          };
+        }
+
+        case 'status': {
+          const linked = await hasLinkedGitHub(userId);
+          if (!linked) {
+            return {
+              content: `❌ **Not linked.** Use \`/user link\` to connect your GitHub account.`,
+              ephemeral: true
+            };
+          }
+
+          const userLink = await getUserLink(userId);
+          const embed: DiscordEmbed = {
+            title: '🔗 Account Link Status',
+            color: EmbedColors.SUCCESS,
+            fields: [
+              { name: '✅ GitHub', value: userLink?.githubUsername ?? 'Linked', inline: true },
+              { name: '🔷 Vercel', value: userLink?.vercelUsername ?? 'Not linked', inline: true },
+              { name: '📅 Linked At', value: userLink?.linkedAt ? new Date(userLink.linkedAt).toLocaleDateString() : 'Unknown', inline: true }
+            ]
+          };
+
+          return { embeds: [embed], ephemeral: true };
+        }
+
+        case 'unlink': {
+          const removed = await unlinkUser(userId);
+          if (!removed) {
+            return { content: '⚠️ No linked account found.', ephemeral: true };
+          }
+          return { content: '✅ Your account has been unlinked from projectmeridus.', ephemeral: true };
+        }
+
+        default:
+          return { content: '❌ Unknown subcommand. Use `/user link`, `/user status`, or `/user unlink`.', ephemeral: true };
+      }
+    }
+  },
+
+  // 27. Watch - Watch or unwatch a repository
+  watch: {
+    name: 'watch',
+    description: 'Watch or unwatch a GitHub repository',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'action',
+        description: 'Watch or unwatch',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'watch', value: 'watch' },
+          { name: 'unwatch', value: 'unwatch' }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const action = (args.action as string) || 'watch';
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        if (action === 'unwatch') {
+          await octokit.rest.activity.deleteRepoSubscription({ owner, repo: repoName });
+          return { content: `🔕 You are no longer watching **${repo}**.` };
+        }
+
+        await octokit.rest.activity.setRepoSubscription({
+          owner,
+          repo: repoName,
+          subscribed: true,
+          ignored: false
+        });
+
+        return { content: `👁️ You are now watching **${repo}** for all events.` };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'watch') };
+      }
+    }
+  },
+
+  // 28. Workflow - GitHub Actions workflow management
+  workflow: {
+    name: 'workflow',
+    description: 'GitHub Actions workflow management',
+    options: [
+      {
+        name: 'repo',
+        description: 'Repository (owner/repo)',
+        type: 3, // STRING
+        required: true,
+        autocomplete: true
+      },
+      {
+        name: 'action',
+        description: 'Action to perform',
+        type: 3, // STRING
+        required: false,
+        choices: [
+          { name: 'list', value: 'list' },
+          { name: 'runs', value: 'runs' }
+        ]
+      }
+    ],
+    execute: async (interaction) => {
+      const access = await checkGitHubAccess(interaction);
+      if (!access.ok) return { content: access.message };
+
+      const octokit = await getUserOctokit(interaction);
+      if (!octokit) return { content: '❌ GitHub authentication failed.' };
+
+      const args = parseOptions(interaction);
+      const repo = args.repo as string;
+      const action = (args.action as string) || 'list';
+
+      if (!isValidRepoFormat(repo)) {
+        return { content: '❌ Invalid repository format. Use: `owner/repo`' };
+      }
+
+      const [owner, repoName] = repo.split('/');
+
+      try {
+        if (action === 'runs') {
+          const runsRes = await octokit.rest.actions.listWorkflowRunsForRepo({
+            owner, repo: repoName, per_page: 5
+          });
+
+          if (runsRes.data.workflow_runs.length === 0) {
+            return { content: `⚙️ No recent workflow runs in **${repo}**.` };
+          }
+
+          const runList = runsRes.data.workflow_runs.map((r) => {
+            const statusEmoji = r.conclusion === 'success' ? '✅' : r.conclusion === 'failure' ? '❌' : r.status === 'in_progress' ? '⏳' : '⏸️';
+            return `${statusEmoji} **${r.name ?? 'Unnamed'}** — \`${r.head_branch ?? 'unknown'}\` (${r.event})`;
+          }).join('\n');
+
+          const embed: DiscordEmbed = {
+            title: `⚙️ Recent Workflow Runs — ${repo}`,
+            description: runList,
+            color: EmbedColors.INFO,
+            footer: { text: 'Last 5 runs' }
+          };
+
+          return { embeds: [embed] };
+        }
+
+        // Default: list workflows
+        const workflowsRes = await octokit.rest.actions.listRepoWorkflows({ owner, repo: repoName });
+
+        if (workflowsRes.data.total_count === 0) {
+          return { content: `⚙️ No workflows found in **${repo}**.` };
+        }
+
+        const workflowList = workflowsRes.data.workflows.map((w: { name: string; state: string; path: string }) =>
+          `• **${w.name}** \`${w.state}\` — \`${w.path}\``
+        ).join('\n');
+
+        const embed: DiscordEmbed = {
+          title: `⚙️ Workflows in ${repo}`,
+          description: workflowList,
+          color: EmbedColors.INFO,
+          footer: { text: `${workflowsRes.data.total_count} workflow(s)` }
+        };
+
+        return { embeds: [embed] };
+      } catch (err: unknown) {
+        return { content: formatErrorMessage(err, 'workflow') };
       }
     }
   },
