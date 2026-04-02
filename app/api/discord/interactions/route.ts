@@ -47,10 +47,6 @@ async function executeRebase(repo: string, prNumber: string, githubToken: string
     throw new Error('Invalid repository format');
   }
 
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
-  }
-
   const prResponse = await fetch(
     `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
     {
@@ -94,10 +90,6 @@ async function createIssue(repo: string, title: string, body: string, githubToke
     throw new Error('Invalid repository format');
   }
 
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
-  }
-
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repoName}/issues`,
     {
@@ -123,14 +115,10 @@ async function createIssue(repo: string, title: string, body: string, githubToke
 /**
  * Create a new pull request via GitHub API
  */
-async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main', githubToken?: string): Promise<{ url: string }> {
+async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main', githubToken: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -158,14 +146,10 @@ async function createPullRequest(repo: string, title: string, body: string, head
 /**
  * Merge a pull request via GitHub API
  */
-async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge', githubToken?: string): Promise<void> {
+async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge', githubToken: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -188,55 +172,17 @@ async function mergePullRequest(repo: string, prNumber: string, method: string =
 }
 
 /**
- * Add a comment to a pull request via GitHub API
+ * Add a comment to a pull request or issue via GitHub API
+ * Both PRs and Issues share the same GitHub Issues comments endpoint
  */
-async function addComment(repo: string, prNumber: string, body: string, githubToken?: string): Promise<{ url: string }> {
+async function addComment(repo: string, number: string, body: string, githubToken: string): Promise<{ url: string }> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
   }
 
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
-  }
-
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues/${prNumber}/comments`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ body }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to add comment: ${response.status}`);
-  }
-
-  const comment = await response.json();
-  return { url: comment.html_url };
-}
-
-/**
- * Add a comment to an issue via GitHub API
- */
-async function addIssueComment(repo: string, issueNumber: string, body: string, githubToken?: string): Promise<{ url: string }> {
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
-  }
-
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}/comments`,
+    `https://api.github.com/repos/${owner}/${repoName}/issues/${number}/comments`,
     {
       method: 'POST',
       headers: {
@@ -260,14 +206,10 @@ async function addIssueComment(repo: string, issueNumber: string, body: string, 
 /**
  * Close a pull request via GitHub API
  */
-async function closePullRequest(repo: string, prNumber: string, githubToken?: string): Promise<void> {
+async function closePullRequest(repo: string, prNumber: string, githubToken: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -292,14 +234,10 @@ async function closePullRequest(repo: string, prNumber: string, githubToken?: st
 /**
  * Close an issue via GitHub API
  */
-async function closeIssue(repo: string, issueNumber: string, githubToken?: string): Promise<void> {
+async function closeIssue(repo: string, issueNumber: string, githubToken: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -324,14 +262,10 @@ async function closeIssue(repo: string, issueNumber: string, githubToken?: strin
 /**
  * Reopen an issue via GitHub API
  */
-async function reopenIssue(repo: string, issueNumber: string, githubToken?: string): Promise<void> {
+async function reopenIssue(repo: string, issueNumber: string, githubToken: string): Promise<void> {
   const [owner, repoName] = repo.split('/');
   if (!owner || !repoName) {
     throw new Error('Invalid repository format');
-  }
-
-  if (!githubToken) {
-    throw new Error('GitHub token not found. Please link your GitHub account using /link command.');
   }
 
   const response = await fetch(
@@ -615,12 +549,10 @@ function createCommentModal(repo: string, prNumber: string, isIssue: boolean = f
   });
 }
 
-function parseCustomId(customId: string, prefix: string): { repo: string; number: string } | null {
+function parseCustomId(customId: string): { repo: string; number: string } | null {
   const parts = customId.split(':');
-  if (parts.length < 3) return null;
-  const repo = parts[2];
-  const number = parts[3];
-  return { repo, number };
+  if (parts.length < 4) return null;
+  return { repo: parts[2], number: parts[3] };
 }
 
 function parseCreateIssueData(customId: string): { repo: string } | null {
@@ -714,7 +646,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Merge PR button
   if (customId.startsWith('gh:merge:') && !customId.includes(':execute')) {
-    const data = parseCustomId(customId, 'gh:merge:');
+    const data = parseCustomId(customId);
     if (data) {
       return createMergeModal(data.repo, data.number);
     }
@@ -722,7 +654,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Comment on PR button
   if (customId.startsWith('gh:comment:') && !customId.includes(':execute')) {
-    const data = parseCustomId(customId, 'gh:comment:');
+    const data = parseCustomId(customId);
     if (data) {
       return createCommentModal(data.repo, data.number, false);
     }
@@ -730,7 +662,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Comment on Issue button
   if (customId.startsWith('gh:comment_issue:') && !customId.includes(':execute')) {
-    const data = parseCustomId(customId, 'gh:comment_issue:');
+    const data = parseCustomId(customId);
     if (data) {
       return createCommentModal(data.repo, data.number, true);
     }
@@ -738,7 +670,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Close PR - execute directly
   if (customId.startsWith('gh:close_pr:')) {
-    const data = parseCustomId(customId, 'gh:close_pr:');
+    const data = parseCustomId(customId);
     if (data) {
       return await closePRHandler(data.repo, data.number, interaction);
     }
@@ -746,7 +678,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Close Issue - execute directly
   if (customId.startsWith('gh:close_issue:')) {
-    const data = parseCustomId(customId, 'gh:close_issue:');
+    const data = parseCustomId(customId);
     if (data) {
       return await closeIssueHandler(data.repo, data.number, interaction);
     }
@@ -754,7 +686,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Reopen Issue - execute directly
   if (customId.startsWith('gh:reopen_issue:')) {
-    const data = parseCustomId(customId, 'gh:reopen_issue:');
+    const data = parseCustomId(customId);
     if (data) {
       return await reopenIssueHandler(data.repo, data.number, interaction);
     }
@@ -762,7 +694,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Review PR - open GitHub
   if (customId.startsWith('gh:review_pr:')) {
-    const data = parseCustomId(customId, 'gh:review_pr:');
+    const data = parseCustomId(customId);
     if (data) {
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -776,7 +708,7 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
 
   // Reply to comment - show message
   if (customId.startsWith('gh:reply:')) {
-    const data = parseCustomId(customId, 'gh:reply:');
+    const data = parseCustomId(customId);
     if (data) {
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -1058,9 +990,6 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const repo = parts[2];
     const prNumber = parts[3];
     
-    const title = interaction.data?.components?.[0]?.components?.[0]?.value || '';
-    const message = interaction.data?.components?.[1]?.components?.[0]?.value || '';
-
     const githubToken = await getGitHubTokenFromInteraction(interaction);
     
     if (!githubToken) {
@@ -1176,7 +1105,7 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     }
 
     try {
-      const result = await addIssueComment(repo, issueNumber, body, githubToken);
+      const result = await addComment(repo, issueNumber, body, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
