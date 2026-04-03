@@ -17,13 +17,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { settings, updateSettings } = useSettingsContext();
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
-  const [mounted, setMounted] = useState(false);
 
   const theme = settings.theme || 'dark';
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -37,13 +32,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     setResolvedTheme(newTheme);
     
-    if (newTheme === 'dark') {
-      root.classList.remove('light');
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    }
+    // Set data-theme attribute instead of adding/removing classes
+    root.setAttribute('data-theme', newTheme);
   }, [theme]);
 
   // Listen for system theme changes
@@ -67,11 +57,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
   };
-
-  // Prevent flash during SSR
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
