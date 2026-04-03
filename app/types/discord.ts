@@ -4,10 +4,12 @@
 export interface DiscordCommandOption {
   name: string;
   description: string;
-  type: number; // 3 = STRING, 4 = INTEGER, 7 = CHANNEL, etc.
+  type: number; // 1 = SUB_COMMAND, 3 = STRING, 4 = INTEGER, 7 = CHANNEL, etc.
   required?: boolean;
   choices?: { name: string; value: string | number }[];
   autocomplete?: boolean;
+  /** Nested options for SUB_COMMAND (type 1) entries */
+  options?: DiscordCommandOption[];
 }
 
 export interface DiscordCommand {

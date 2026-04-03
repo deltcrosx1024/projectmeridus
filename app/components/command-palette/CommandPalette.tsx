@@ -55,20 +55,20 @@ export default function CommandPalette({ isOpen, onClose }: Readonly<CommandPale
           router.push('/docs/api');
           break;
         case 'refresh':
-          window.location.reload();
+          globalThis.location.reload();
           break;
         case 'theme':
           document.documentElement.classList.toggle('light');
           break;
         case 'compact':
           // Dispatch custom event for compact mode toggle
-          window.dispatchEvent(new CustomEvent('toggle-compact'));
+          globalThis.dispatchEvent(new CustomEvent('toggle-compact'));
           break;
         case 'search':
-          window.dispatchEvent(new CustomEvent('focus-search'));
+          globalThis.dispatchEvent(new CustomEvent('focus-search'));
           break;
         case 'github':
-          window.open('https://github.com', '_blank');
+          globalThis.open('https://github.com', '_blank');
           break;
       }
       onClose();
@@ -115,10 +115,10 @@ export default function CommandPalette({ isOpen, onClose }: Readonly<CommandPale
               case 's': router.push('/settings'); break;
               case 'd': router.push('/docs/api'); break;
             }
-            globalThis.window.removeEventListener('keydown', handler);
+            globalThis.removeEventListener('keydown', handler);
           };
-          globalThis.window.addEventListener('keydown', handler);
-          setTimeout(() => globalThis.window.removeEventListener('keydown', handler), 500);
+          globalThis.addEventListener('keydown', handler);
+          setTimeout(() => globalThis.removeEventListener('keydown', handler), 500);
         }
         return;
       }
@@ -142,8 +142,8 @@ export default function CommandPalette({ isOpen, onClose }: Readonly<CommandPale
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    globalThis.addEventListener('keydown', handleKeyDown);
+    return () => globalThis.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, filteredCommands, selectedIndex, router, onClose]);
 
   if (!isOpen) return null;
@@ -152,9 +152,16 @@ export default function CommandPalette({ isOpen, onClose }: Readonly<CommandPale
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+      <button
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            onClose();
+          }
+        }}
+        aria-label="Close command palette"
+        type="button"
       />
       <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
         <div className="flex items-center px-4 py-3 border-b border-slate-700">

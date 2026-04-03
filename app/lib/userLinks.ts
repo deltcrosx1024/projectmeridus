@@ -19,6 +19,31 @@ export interface UserLink {
 const KEY_PREFIX = 'meridus:link:';
 const TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
+/** Shape of the data stored in Redis (tokens are encrypted) */
+interface StoredUserLink {
+  discordUserId: string;
+  discordUsername?: string;
+  githubToken: string;
+  githubUsername?: string;
+  vercelToken?: string;
+  vercelUsername?: string;
+  vercelTeamId?: string;
+  linkedAt: string;
+  lastUsed?: string;
+}
+
+/**
+ * Upstash Redis may return an already-parsed object or a JSON string
+ * depending on the client version and serialisation settings.
+ * This helper normalises both cases.
+ */
+function parseRedisValue<T>(data: unknown): T {
+  if (typeof data === 'string') {
+    return JSON.parse(data) as T;
+  }
+  return data as T;
+}
+
 /**
  * Link a Discord user to their GitHub token
  * Called during OAuth callback when both services are authenticated
@@ -31,11 +56,11 @@ export async function linkUser(
     githubUsername?: string;
   }
 ): Promise<void> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
-  
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
+   
   // Encrypt the GitHub token before storing
   const encryptedToken = await encryptToken(githubToken);
-  
+   
   const link: Omit<UserLink, 'githubToken'> & { githubToken: string } = {
     discordUserId,
     discordUsername: metadata?.discordUsername,
@@ -43,7 +68,7 @@ export async function linkUser(
     githubToken: encryptedToken,
     linkedAt: new Date().toISOString(),
   };
-  
+   
   const jsonString = JSON.stringify(link);
   console.log(`[UserLinks] Storing data:`, jsonString.substring(0, 100) + '...');
   await redis.setex(key, TTL_SECONDS, jsonString);
@@ -62,22 +87,17 @@ export async function linkVercelAccount(
     vercelTeamId?: string;
   }
 ): Promise<void> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
-  
-  const existingData = await redis.get<string>(key);
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
+   
+  const existingData = await redis.get(key);
   if (!existingData) {
     throw new Error('No existing user link found. Please link Discord first.');
   }
-  
+   
   const encryptedToken = await encryptToken(vercelToken);
-  
-  let parsed: any;
-  if (typeof existingData === 'string') {
-    parsed = JSON.parse(existingData);
-  } else {
-    parsed = existingData;
-  }
-  
+   
+  const parsed = parseRedisValue<StoredUserLink>(existingData);
+   
   const updatedLink = {
     ...parsed,
     vercelToken: encryptedToken,
@@ -85,7 +105,7 @@ export async function linkVercelAccount(
     vercelTeamId: metadata?.vercelTeamId || parsed.vercelTeamId,
     lastUsed: new Date().toISOString(),
   };
-  
+   
   await redis.setex(key, TTL_SECONDS, JSON.stringify(updatedLink));
   console.log(`[UserLinks] Linked Vercel to Discord user ${discordUserId}`);
 }
@@ -95,24 +115,15 @@ export async function linkVercelAccount(
  * Called from Discord bot commands
  */
 export async function getUserLink(discordUserId: string): Promise<UserLink | null> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
-
-  const data = await redis.get<string>(key);
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
+ 
+  const data = await redis.get(key);
   if (!data) {
     return null;
   }
 
   try {
-    // Handle both string and already-parsed object
-    let parsed: Omit<UserLink, 'githubToken' | 'vercelToken'> & { githubToken: string; vercelToken?: string };
-
-    if (typeof data === 'string') {
-      parsed = JSON.parse(data);
-    } else if (typeof data === 'object') {
-      parsed = data as any;
-    } else {
-      throw new Error(`Unexpected data type: ${typeof data}`);
-    }
+    const parsed = parseRedisValue<StoredUserLink>(data);
 
     // Decrypt the GitHub token
     const decryptedToken = await decryptToken(parsed.githubToken);
@@ -123,29 +134,21 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
       decryptedVercelToken = await decryptToken(parsed.vercelToken);
     }
 
-    // Update last used time WITHOUT re-encrypting tokens
-    // Only update if lastUsed is older than 5 minutes to reduce Redis writes
+    // Update last used time if older than 5 minutes to reduce Redis writes
+    // We fetch fresh data to avoid overwriting concurrent updates
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
     const lastUsedTime = parsed.lastUsed ? new Date(parsed.lastUsed).getTime() : 0;
     
     if (lastUsedTime < fiveMinutesAgo) {
-      const updateData = {
-        ...parsed,
-        lastUsed: new Date().toISOString(),
-      };
-      // Store with encrypted tokens (read from original data)
-      const updatedLink = {
-        discordUserId: updateData.discordUserId,
-        discordUsername: updateData.discordUsername,
-        githubUsername: updateData.githubUsername,
-        githubToken: parsed.githubToken, // Keep original encrypted token
-        vercelToken: parsed.vercelToken, // Keep original encrypted token if exists
-        vercelUsername: updateData.vercelUsername,
-        vercelTeamId: updateData.vercelTeamId,
-        linkedAt: updateData.linkedAt,
-        lastUsed: updateData.lastUsed,
-      };
-      await redis.setex(key, TTL_SECONDS, JSON.stringify(updatedLink));
+      const freshData = await redis.get(key);
+      if (freshData) {
+        const freshParsed = parseRedisValue<StoredUserLink>(freshData);
+        const updateData = {
+          ...freshParsed,
+          lastUsed: new Date().toISOString(),
+        };
+        await redis.setex(key, TTL_SECONDS, JSON.stringify(updateData));
+      }
     }
 
     return {
@@ -170,7 +173,7 @@ export async function getUserLink(discordUserId: string): Promise<UserLink | nul
  * Check if a user has a linked GitHub account
  */
 export async function hasLinkedGitHub(discordUserId: string): Promise<boolean> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
   const exists = await redis.exists(key);
   return exists === 1;
 }
@@ -179,25 +182,20 @@ export async function hasLinkedGitHub(discordUserId: string): Promise<boolean> {
  * Get user's Vercel token (decrypted)
  */
 export async function getUserVercelToken(discordUserId: string): Promise<string | null> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
-  
-  const data = await redis.get<string>(key);
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
+   
+  const data = await redis.get(key);
   if (!data) {
     return null;
   }
-  
+   
   try {
-    let parsed: any;
-    if (typeof data === 'string') {
-      parsed = JSON.parse(data);
-    } else {
-      parsed = data;
-    }
-    
+    const parsed = parseRedisValue<StoredUserLink>(data);
+   
     if (!parsed.vercelToken) {
       return null;
     }
-    
+   
     return await decryptToken(parsed.vercelToken);
   } catch (error) {
     console.error(`[UserLinks] Failed to get Vercel token for ${discordUserId}:`, error);
@@ -209,21 +207,15 @@ export async function getUserVercelToken(discordUserId: string): Promise<string 
  * Check if user has Vercel linked
  */
 export async function hasLinkedVercel(discordUserId: string): Promise<boolean> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
-  
-  const data = await redis.get<string>(key);
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
+   
+  const data = await redis.get(key);
   if (!data) {
     return false;
   }
-  
+   
   try {
-    let parsed: any;
-    if (typeof data === 'string') {
-      parsed = JSON.parse(data);
-    } else {
-      parsed = data;
-    }
-    
+    const parsed = parseRedisValue<StoredUserLink>(data);
     return !!parsed.vercelToken;
   } catch {
     return false;
@@ -234,7 +226,7 @@ export async function hasLinkedVercel(discordUserId: string): Promise<boolean> {
  * Unlink a Discord user from their GitHub account
  */
 export async function unlinkUser(discordUserId: string): Promise<boolean> {
-  const key = `${KEY_PREFIX}${discordUserId}`;
+  const key = `${KEY_PREFIX}${hashUserId(discordUserId)}`;
   const result = await redis.del(key);
   return result === 1;
 }
@@ -246,12 +238,26 @@ export async function unlinkUser(discordUserId: string): Promise<boolean> {
 export async function getAllLinkedUsers(): Promise<string[]> {
   const keys: string[] = [];
   let cursor = '0';
-  
+   
   do {
     const result = await redis.scan(cursor, { match: `${KEY_PREFIX}*`, count: 100 });
     cursor = result[0];
     keys.push(...result[1]);
   } while (cursor !== '0');
-  
-  return keys.map(k => k.replace(KEY_PREFIX, ''));
+   
+  // Extract discordUserId from the stored values, not from the hashed keys
+  const userIds: string[] = [];
+  for (const key of keys) {
+    const data = await redis.get(key);
+    if (data) {
+      try {
+        const parsed = parseRedisValue<StoredUserLink>(data);
+        userIds.push(parsed.discordUserId);
+      } catch (error) {
+        console.error(`[UserLinks] Failed to parse link data for key ${key}:`, error);
+      }
+    }
+  }
+   
+  return userIds;
 }
