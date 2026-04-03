@@ -235,10 +235,6 @@ export async function unlinkUser(discordUserId: string): Promise<boolean> {
  * Get all linked users (for admin purposes)
  * Note: This scans all keys, use carefully in production
  */
-/**
- * Get all linked users (for admin purposes)
- * Note: This scans all keys, use carefully in production
- */
 export async function getAllLinkedUsers(): Promise<string[]> {
   const keys: string[] = [];
   let cursor = '0';
