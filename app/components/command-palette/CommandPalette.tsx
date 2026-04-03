@@ -29,7 +29,7 @@ const defaultCommands: Command[] = [
   { id: 'github', name: 'Open GitHub Profile', action: () => {}, category: 'External' },
 ];
 
-export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+export default function CommandPalette({ isOpen, onClose }: Readonly<CommandPaletteProps>) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -115,10 +115,10 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               case 's': router.push('/settings'); break;
               case 'd': router.push('/docs/api'); break;
             }
-            window.removeEventListener('keydown', handler);
+            globalThis.window.removeEventListener('keydown', handler);
           };
-          window.addEventListener('keydown', handler);
-          setTimeout(() => window.removeEventListener('keydown', handler), 500);
+          globalThis.window.addEventListener('keydown', handler);
+          setTimeout(() => globalThis.window.removeEventListener('keydown', handler), 500);
         }
         return;
       }
