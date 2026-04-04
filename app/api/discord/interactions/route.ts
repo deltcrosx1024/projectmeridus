@@ -10,6 +10,24 @@ import { getUserLink } from '@/app/lib/userLinks';
 
 const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
 
+/**
+ * Fetch with timeout to prevent hanging requests
+ */
+async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeoutMs = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(input, {
+      ...init,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 interface CommandResult {
   content?: string;
   embeds?: unknown[];
@@ -21,63 +39,116 @@ interface CommandResult {
  * Get the GitHub token for a user from their Discord interaction
  */
 async function getGitHubTokenFromInteraction(interaction: DiscordInteraction): Promise<string | null> {
-  const discordUserId = interaction.member?.user?.id || interaction.user?.id;
-  
-  if (!discordUserId) {
-    console.error('[Discord] No user ID found in interaction');
+  try {
+    const discordUserId = interaction.member?.user?.id || interaction.user?.id;
+    
+    if (!discordUserId) {
+      console.error('[Discord] No user ID found in interaction', { 
+        interactionId: interaction.id,
+        hasMember: !!interaction.member,
+        hasUser: !!interaction.user
+      });
+      return null;
+    }
+    
+    const userLink = await getUserLink(discordUserId);
+    
+    if (!userLink) {
+      console.warn(`[Discord] No GitHub link found for user ${discordUserId}`, { 
+        userId: discordUserId,
+        interactionId: interaction.id
+      });
+      return null;
+    }
+    
+    if (!userLink.githubToken) {
+      console.error(`[Discord] GitHub token missing for user ${discordUserId}`, { 
+        userId: discordUserId,
+        interactionId: interaction.id,
+        hasVercelToken: !!userLink.vercelToken
+      });
+      return null;
+    }
+    
+    return userLink.githubToken;
+  } catch (error) {
+    console.error('[Discord] Failed to get GitHub token from interaction:', error, {
+      interactionId: interaction.id,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error'
+    });
     return null;
   }
-
-  const userLink = await getUserLink(discordUserId);
-  
-  if (!userLink) {
-    console.error(`[Discord] No GitHub link found for user ${discordUserId}`);
-    return null;
-  }
-
-  return userLink.githubToken;
 }
 
 /**
  * Execute a rebase via GitHub API
  */
 async function executeRebase(repo: string, prNumber: string, githubToken: string): Promise<void> {
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!prNumber || !/^\d+$/.test(prNumber)) {
+    throw new Error('Invalid PR number: must be a positive integer');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
+  }
+
   const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
   }
 
-  const prResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
-    {
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
+  try {
+    // Get PR details with timeout
+    const prResponse = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
       },
+      10000 // 10 second timeout
+    );
+
+    if (!prResponse.ok) {
+      const errorDetails = await prResponse.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to get PR details (${prResponse.status}): ${prResponse.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  );
 
-  if (!prResponse.ok) {
-    throw new Error(`Failed to get PR details: ${prResponse.statusText}`);
-  }
+    const pr = await prResponse.json();
 
-  const pr = await prResponse.json();
-
-  const updateResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/update-branch`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
+    // Update branch with timeout
+    const updateResponse = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/update-branch`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ expected_head_sha: pr.head.sha }),
       },
-      body: JSON.stringify({ expected_head_sha: pr.head.sha }),
-    }
-  );
+      15000 // 15 second timeout for update operation
+    );
 
-  if (!updateResponse.ok && updateResponse.status !== 202) {
-    const error = await updateResponse.json().catch(() => ({ message: updateResponse.statusText }));
-    throw new Error(error.message || `Failed to rebase: ${updateResponse.status}`);
+    if (!updateResponse.ok && updateResponse.status !== 202) {
+      const errorDetails = await updateResponse.json().catch(() => ({ message: updateResponse.statusText }));
+      const errorMessage = errorDetails?.message || updateResponse.statusText || 'Unknown error';
+      throw new Error(`Failed to rebase PR ${prNumber}: ${errorMessage} (Status: ${updateResponse.status})`);
+    }
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -85,89 +156,188 @@ async function executeRebase(repo: string, prNumber: string, githubToken: string
  * Create a new issue via GitHub API
  */
 async function createIssue(repo: string, title: string, body: string, githubToken: string): Promise<{ url: string }> {
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!title || typeof title !== 'string' || title.trim() === '') {
+    throw new Error('Issue title is required and cannot be empty');
+  }
+  
+  if (title.length > 255) {
+    throw new Error('Issue title cannot exceed 255 characters');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
+  }
+  
+  // Body can be empty but must be string
+  if (body === undefined || body === null) {
+    throw new Error('Issue body must be a string');
+  }
+
   const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ title, body: body || '' }),
       },
-      body: JSON.stringify({ title, body }),
+      10000 // 10 second timeout
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to create issue (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  );
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to create issue: ${response.status}`);
+    const issue = await response.json();
+    return { url: issue.html_url };
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while creating issue: ${error.message}`);
+    }
+    throw error;
   }
-
-  const issue = await response.json();
-  return { url: issue.html_url };
 }
 
 /**
  * Create a new pull request via GitHub API
  */
 async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main', githubToken: string): Promise<{ url: string }> {
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!title || typeof title !== 'string' || title.trim() === '') {
+    throw new Error('PR title is required and cannot be empty');
+  }
+  
+  if (title.length > 255) {
+    throw new Error('PR title cannot exceed 255 characters');
+  }
+  
+  if (!head || typeof head !== 'string' || head.trim() === '') {
+    throw new Error('Head branch is required and cannot be empty');
+  }
+  
+  if (!base || typeof base !== 'string') {
+    throw new Error('Base branch is required');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
+  }
+  
+  // Body can be empty but must be string
+  if (body === undefined || body === null) {
+    throw new Error('PR body must be a string');
+  }
+
   const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/pulls`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ title, body: body || '', head, base }),
       },
-      body: JSON.stringify({ title, body, head, base }),
+      15000 // 15 second timeout for PR creation
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to create PR (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  );
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to create PR: ${response.status}`);
+    const pr = await response.json();
+    return { url: pr.html_url };
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while creating PR: ${error.message}`);
+    }
+    throw error;
   }
-
-  const pr = await response.json();
-  return { url: pr.html_url };
 }
 
 /**
  * Merge a pull request via GitHub API
  */
 async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge', githubToken: string): Promise<void> {
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!prNumber || !/^\d+$/.test(prNumber)) {
+    throw new Error('Invalid PR number: must be a positive integer');
+  }
+  
+  // Validate merge method
+  const validMethods = ['merge', 'squash', 'rebase'];
+  if (!method || typeof method !== 'string' || !validMethods.includes(method)) {
+    throw new Error(`Invalid merge method: must be one of ${validMethods.join(', ')}`);
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/merge`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ merge_method: method }),
-    }
-  );
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
+  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to merge PR: ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}/merge`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ merge_method: method }),
+      },
+      15000 // 15 second timeout for merge operation
+    );
+
+    if (!response.ok && response.status !== 405) { // 405 means method not allowed (already merged)
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to merge PR (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+    // Note: 405 is acceptable as it means the PR is already merged
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while merging PR: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -176,58 +346,110 @@ async function mergePullRequest(repo: string, prNumber: string, method: string =
  * Both PRs and Issues share the same GitHub Issues comments endpoint
  */
 async function addComment(repo: string, number: string, body: string, githubToken: string): Promise<{ url: string }> {
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!number || !/^\d+$/.test(number)) {
+    throw new Error('Issue/PR number must be a positive integer');
+  }
+  
+  if (!body || typeof body !== 'string' || body.trim() === '') {
+    throw new Error('Comment body is required and cannot be empty');
+  }
+  
+  if (body.length > 65536) { // GitHub comment limit is 65,536 characters
+    throw new Error('Comment body cannot exceed 65,536 characters');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
+  }
+
   const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues/${number}/comments`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues/${number}/comments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ body }),
       },
-      body: JSON.stringify({ body }),
+      10000 // 10 second timeout
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to add comment (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  );
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to add comment: ${response.status}`);
+    const comment = await response.json();
+    return { url: comment.html_url };
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while adding comment: ${error.message}`);
+    }
+    throw error;
   }
-
-  const comment = await response.json();
-  return { url: comment.html_url };
 }
 
 /**
  * Close a pull request via GitHub API
  */
 async function closePullRequest(repo: string, prNumber: string, githubToken: string): Promise<void> {
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!prNumber || !/^\d+$/.test(prNumber)) {
+    throw new Error('Invalid PR number: must be a positive integer');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ state: 'closed' }),
-    }
-  );
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
+  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to close PR: ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ state: 'closed' }),
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to close PR (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while closing PR: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -235,27 +457,49 @@ async function closePullRequest(repo: string, prNumber: string, githubToken: str
  * Close an issue via GitHub API
  */
 async function closeIssue(repo: string, issueNumber: string, githubToken: string): Promise<void> {
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!issueNumber || !/^\d+$/.test(issueNumber)) {
+    throw new Error('Issue number must be a positive integer');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ state: 'closed' }),
-    }
-  );
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
+  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to close issue: ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ state: 'closed' }),
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to close issue (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while closing issue: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -263,27 +507,49 @@ async function closeIssue(repo: string, issueNumber: string, githubToken: string
  * Reopen an issue via GitHub API
  */
 async function reopenIssue(repo: string, issueNumber: string, githubToken: string): Promise<void> {
-  const [owner, repoName] = repo.split('/');
-  if (!owner || !repoName) {
-    throw new Error('Invalid repository format');
+  // Input validation
+  if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
+    throw new Error('Invalid repository format: expected "owner/repo"');
+  }
+  
+  if (!issueNumber || !/^\d+$/.test(issueNumber)) {
+    throw new Error('Issue number must be a positive integer');
+  }
+  
+  if (!githubToken || typeof githubToken !== 'string') {
+    throw new Error('GitHub token is required');
   }
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${githubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ state: 'open' }),
-    }
-  );
+  const [owner, repoName] = repo.split('/');
+  if (!owner || !repoName || owner.trim() === '' || repoName.trim() === '') {
+    throw new Error('Invalid repository format: owner and repo name cannot be empty');
+  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `Failed to reopen issue: ${response.status}`);
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+        body: JSON.stringify({ state: 'open' }),
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to reopen issue (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+  } catch (error) {
+    if (error.name === 'TimeoutError') {
+      throw new Error(`GitHub API request timed out while reopening issue: ${error.message}`);
+    }
+    throw error;
   }
 }
 
@@ -328,6 +594,30 @@ async function verifyDiscordRequest(request: Request): Promise<{ valid: boolean;
   const signature = request.headers.get('x-signature-ed25519') || '';
   const timestamp = request.headers.get('x-signature-timestamp') || '';
 
+  // Input validation for required headers
+  if (!signature) {
+    console.error('[Discord] Missing x-signature-ed25519 header');
+    return { valid: false, body: '' };
+  }
+
+  if (!timestamp) {
+    console.error('[Discord] Missing x-signature-timestamp header');
+    return { valid: false, body: '' };
+  }
+
+  // Validate timestamp is a number and within tolerance (5 minutes)
+  const timestampNum = parseInt(timestamp, 10);
+  if (isNaN(timestampNum)) {
+    console.error('[Discord] Invalid timestamp format');
+    return { valid: false, body: '' };
+  }
+
+  const now = Date.now();
+  if (Math.abs(now - timestampNum) > 5 * 60 * 1000) {
+    console.error('[Discord] Timestamp outside tolerance window');
+    return { valid: false, body: '' };
+  }
+
   console.log('[Discord] Headers:', {
     signature: signature ? 'present' : 'missing',
     timestamp: timestamp ? 'present' : 'missing',
@@ -341,6 +631,18 @@ async function verifyDiscordRequest(request: Request): Promise<{ valid: boolean;
 
   const bodyBuffer = await request.arrayBuffer();
   const body = new TextDecoder('utf-8').decode(bodyBuffer);
+
+  // Validate body is not empty
+  if (!body || body.length === 0) {
+    console.error('[Discord] Empty request body');
+    return { valid: false, body: '' };
+  }
+
+  // Limit body size to prevent abuse
+  if (body.length > 1024 * 1024) { // 1MB limit
+    console.error('[Discord] Request body too large');
+    return { valid: false, body: '' };
+  }
 
   try {
     const isValid = await verifyKey(body, signature, timestamp, DISCORD_PUBLIC_KEY);
@@ -357,32 +659,119 @@ function handlePing(): Response {
 }
 
 async function handleApplicationCommand(interaction: DiscordInteraction): Promise<Response> {
-  const commandName = interaction.data?.name;
-
-  if (!commandName) {
-    console.error('[Discord] No command name in interaction data');
-    return createErrorResponse('❌ No command name provided.');
-  }
-
-  console.log(`[Discord] Executing command: /${commandName}`);
-
-  const command = commands[commandName];
-
-  if (!command) {
-    console.warn(`[Discord] Unknown command: ${commandName}`);
-    return createErrorResponse(
-      `❌ Unknown command: **${commandName}**\nUse **/list** to see available commands.`
-    );
-  }
-
+  const startTime = Date.now();
+  
   try {
-    const result = await command.execute(interaction);
-    console.log(`[Discord] Command /${commandName} executed successfully`);
-    return buildCommandResponse(result);
+    // Validate interaction structure
+    if (!interaction || typeof interaction !== 'object') {
+      console.error('[Discord] Invalid interaction object received');
+      return createErrorResponse('❌ Invalid interaction data');
+    }
+
+    if (!interaction.data || typeof interaction.data !== 'object') {
+      console.error('[Discord] Missing or invalid interaction data');
+      return createErrorResponse('❌ Invalid command data');
+    }
+
+    const commandName = interaction.data?.name;
+
+    if (!commandName || typeof commandName !== 'string') {
+      console.error('[Discord] No command name in interaction data', { 
+        interactionId: interaction.id,
+        data: interaction.data
+      });
+      return createErrorResponse('❌ No command name provided.');
+    }
+
+    // Additional command name validation
+    if (commandName.length > 100) {
+      console.error('[Discord] Command name too long', { 
+        interactionId: interaction.id,
+        commandNameLength: commandName.length
+      });
+      return createErrorResponse('❌ Command name is too long');
+    }
+
+    console.log(`[Discord] Executing command: /${commandName}`, { 
+      interactionId: interaction.id,
+      userId: interaction.member?.user?.id || interaction.user?.id
+    });
+
+    const command = commands[commandName];
+
+    if (!command) {
+      console.warn(`[Discord] Unknown command: ${commandName}`, { 
+        interactionId: interaction.id,
+        commandName
+      });
+      return createErrorResponse(
+        `❌ Unknown command: **${commandName}**\nUse **/list** to see available commands.`
+      );
+    }
+
+    // Validate command has execute method
+    if (!command.execute || typeof command.execute !== 'function') {
+      console.error(`[Discord] Command ${commandName} missing execute method`, { 
+        interactionId: interaction.id,
+        commandName
+      });
+      return createErrorResponse('❌ Internal command error');
+    }
+
+    try {
+      const result = await command.execute(interaction);
+      const endTime = Date.now();
+      
+      console.log(`[Discord] Command /${commandName} executed successfully in ${endTime - startTime}ms`, { 
+        interactionId: interaction.id,
+        commandName,
+        durationMs: endTime - startTime
+      });
+      
+      return buildCommandResponse(result);
+    } catch (executeError: unknown) {
+      const endTime = Date.now();
+      const errorMessage = executeError instanceof Error ? executeError.message : 'Unknown error';
+      
+      console.error(`[Discord] Error executing command ${commandName} after ${endTime - startTime}ms:`, executeError, { 
+        interactionId: interaction.id,
+        commandName,
+        durationMs: endTime - startTime,
+        error: executeError instanceof Error ? {
+          message: executeError.message,
+          stack: executeError.stack
+        } : executeError
+      });
+      
+      // Provide more specific error messages based on error type
+      if (executeError instanceof Error) {
+        if (executeError.message.includes('timeout') || executeError.message.includes('TimeoutError')) {
+          return createErrorResponse('❌ Command execution timed out. Please try again.');
+        }
+        if (executeError.message.includes('GitHub') && (executeError.message.includes('token') || executeError.message.includes('authentication'))) {
+          return createErrorResponse('❌ GitHub authentication failed. Please re-link your account.');
+        }
+        if (executeError.message.includes('rate limit') || executeError.message.includes('403')) {
+          return createErrorResponse('❌ Rate limit exceeded. Please wait a moment and try again.');
+        }
+      }
+      
+      return createErrorResponse(`❌ Error executing command: ${errorMessage}`);
+    }
   } catch (err: unknown) {
+    const endTime = Date.now();
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Discord] Error executing command ${commandName}:`, err);
-    return createErrorResponse(`❌ Error executing command: ${errorMessage}`);
+    
+    console.error(`[Discord] Unexpected error handling command after ${endTime - startTime}ms:`, err, { 
+      interactionId: interaction.id,
+      durationMs: endTime - startTime,
+      error: err instanceof Error ? {
+        message: err.message,
+        stack: err.stack
+      } : err
+    });
+    
+    return createErrorResponse('❌ An unexpected error occurred. Please try again later.');
   }
 }
 
