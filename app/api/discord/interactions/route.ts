@@ -8,7 +8,10 @@ import {
 import { handleAutocomplete as handleAutocompleteLogic } from '@/app/lib/discord/autocomplete';
 import { getUserLink } from '@/app/lib/userLinks';
 
-const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY || '';
+const DISCORD_PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY;
+if (!DISCORD_PUBLIC_KEY) {
+  throw new Error('DISCORD_PUBLIC_KEY environment variable is required');
+}
 
 /**
  * Fetch with timeout to prevent hanging requests
@@ -23,6 +26,9 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeoutM
       signal: controller.signal
     });
     return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   } finally {
     clearTimeout(id);
   }
@@ -30,8 +36,8 @@ async function fetchWithTimeout(input: RequestInfo, init?: RequestInit, timeoutM
 
 interface CommandResult {
   content?: string;
-  embeds?: unknown[];
-  components?: unknown[];
+  embeds?: any[]; // Discord API Embed[]
+  components?: any[]; // Discord API Component[]
   ephemeral?: boolean;
 }
 
@@ -72,6 +78,25 @@ async function getGitHubTokenFromInteraction(interaction: DiscordInteraction): P
     
     return userLink.githubToken;
   } catch (error) {
+    // Distinguish between different error types
+    if (error instanceof Error) {
+      if (error.message.includes('not found') || error.message.includes('No user')) {
+        console.warn(`[Discord] User link not found for Discord user`, {
+          interactionId: interaction.id,
+          error: error.message
+        });
+        return null;
+      }
+      
+      if (error.message.includes('database') || error.message.includes('connection')) {
+        console.error(`[Discord] Database error while fetching user link:`, error, {
+          interactionId: interaction.id
+        });
+        // Return null for database errors to allow graceful degradation
+        return null;
+      }
+    }
+    
     console.error('[Discord] Failed to get GitHub token from interaction:', error, {
       interactionId: interaction.id,
       errorMessage: error instanceof Error ? error.message : 'Unknown error'
@@ -142,14 +167,14 @@ async function executeRebase(repo: string, prNumber: string, githubToken: string
     if (!updateResponse.ok && updateResponse.status !== 202) {
       const errorDetails = await updateResponse.json().catch(() => ({ message: updateResponse.statusText }));
       const errorMessage = errorDetails?.message || updateResponse.statusText || 'Unknown error';
-      throw new Error(`Failed to rebase PR ${prNumber}: ${errorMessage} (Status: ${updateResponse.status})`);
+      throw new Error(`Failed to rebase PR ${prNumber}: ${errorMessage.substring(0, 200)} (Status: ${updateResponse.status})`);
     }
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
@@ -206,18 +231,18 @@ async function createIssue(repo: string, title: string, body: string, githubToke
 
     const issue = await response.json();
     return { url: issue.html_url };
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while creating issue: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while creating issue: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
  * Create a new pull request via GitHub API
  */
-async function createPullRequest(repo: string, title: string, body: string, head: string, base: string = 'main', githubToken: string): Promise<{ url: string }> {
+async function createPullRequest(repo: string, title: string, body: string, head: string, githubToken: string, base: string = 'main'): Promise<{ url: string }> {
   // Input validation
   if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
     throw new Error('Invalid repository format: expected "owner/repo"');
@@ -276,18 +301,18 @@ async function createPullRequest(repo: string, title: string, body: string, head
 
     const pr = await response.json();
     return { url: pr.html_url };
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while creating PR: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while creating PR: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
  * Merge a pull request via GitHub API
  */
-async function mergePullRequest(repo: string, prNumber: string, method: string = 'merge', githubToken: string): Promise<void> {
+async function mergePullRequest(repo: string, prNumber: string, githubToken: string, method: string = 'merge'): Promise<void> {
   // Input validation
   if (!repo || typeof repo !== 'string' || !repo.includes('/')) {
     throw new Error('Invalid repository format: expected "owner/repo"');
@@ -328,17 +353,22 @@ async function mergePullRequest(repo: string, prNumber: string, method: string =
       15000 // 15 second timeout for merge operation
     );
 
-    if (!response.ok && response.status !== 405) { // 405 means method not allowed (already merged)
+    if (!response.ok) {
+      // 405 means method not allowed (already merged) - this is acceptable
+      if (response.status === 405) {
+        // PR is already merged, consider this a success
+        return;
+      }
+      
       const errorDetails = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to merge PR (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-    // Note: 405 is acceptable as it means the PR is already merged
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while merging PR: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while merging PR: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
@@ -372,35 +402,40 @@ async function addComment(repo: string, number: string, body: string, githubToke
     throw new Error('Invalid repository format: owner and repo name cannot be empty');
   }
 
-  try {
-    const response = await fetchWithTimeout(
-      `https://api.github.com/repos/${owner}/${repoName}/issues/${number}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${githubToken}`,
-          Accept: 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-          'User-Agent': 'Meridus-Discord-Bot/1.0',
+    try {
+      const response = await fetchWithTimeout(
+        `https://api.github.com/repos/${owner}/${repoName}/issues/${number}/comments`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Meridus-Discord-Bot/1.0',
+          },
+          body: JSON.stringify({ body }),
         },
-        body: JSON.stringify({ body }),
-      },
-      10000 // 10 second timeout
-    );
+        10000 // 10 second timeout
+      );
 
-    if (!response.ok) {
-      const errorDetails = await response.text().catch(() => 'Unknown error');
-      throw new Error(`Failed to add comment (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
-    }
+      // Handle specific error cases
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Issue/PR #${number} not found in repository ${repo}`);
+        }
+        
+        const errorDetails = await response.text().catch(() => 'Unknown error');
+        throw new Error(`Failed to add comment (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
+      }
 
-    const comment = await response.json();
-    return { url: comment.html_url };
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while adding comment: ${error.message}`);
-    }
-    throw error;
-  }
+      const comment = await response.json();
+      return { url: comment.html_url };
+     } catch (error) {
+       if (error instanceof Error && error.name === 'TimeoutError') {
+         throw new Error(`GitHub API request timed out while adding comment: ${error.message}`);
+       }
+       throw error;
+     }
 }
 
 /**
@@ -426,6 +461,42 @@ async function closePullRequest(repo: string, prNumber: string, githubToken: str
   }
 
   try {
+    // First check if PR exists and get current state
+    const checkResponse = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!checkResponse.ok) {
+      if (checkResponse.status === 404) {
+        throw new Error(`PR #${prNumber} not found in repository ${repo}`);
+      }
+      
+      const errorDetails = await checkResponse.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to check PR status (${checkResponse.status}): ${checkResponse.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+
+    const pr = await checkResponse.json();
+    
+    // If PR is already closed, consider it a success
+    if (pr.state === 'closed') {
+      return;
+    }
+
+    // If PR is merged, we can't close it (it's already effectively closed)
+    if (pr.merged) {
+      return;
+    }
+
+    // Proceed to close the PR
     const response = await fetchWithTimeout(
       `https://api.github.com/repos/${owner}/${repoName}/pulls/${prNumber}`,
       {
@@ -445,12 +516,12 @@ async function closePullRequest(repo: string, prNumber: string, githubToken: str
       const errorDetails = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to close PR (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while closing PR: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while closing PR: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
@@ -476,6 +547,37 @@ async function closeIssue(repo: string, issueNumber: string, githubToken: string
   }
 
   try {
+    // First check if issue exists and get current state
+    const checkResponse = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!checkResponse.ok) {
+      if (checkResponse.status === 404) {
+        throw new Error(`Issue #${issueNumber} not found in repository ${repo}`);
+      }
+      
+      const errorDetails = await checkResponse.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to check issue status (${checkResponse.status}): ${checkResponse.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+
+    const issue = await checkResponse.json();
+    
+    // If issue is already closed, consider it a success
+    if (issue.state === 'closed') {
+      return;
+    }
+
+    // Proceed to close the issue
     const response = await fetchWithTimeout(
       `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
       {
@@ -495,12 +597,12 @@ async function closeIssue(repo: string, issueNumber: string, githubToken: string
       const errorDetails = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to close issue (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while closing issue: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while closing issue: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 /**
@@ -526,6 +628,37 @@ async function reopenIssue(repo: string, issueNumber: string, githubToken: strin
   }
 
   try {
+    // First check if issue exists and get current state
+    const checkResponse = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+      },
+      10000 // 10 second timeout
+    );
+
+    if (!checkResponse.ok) {
+      if (checkResponse.status === 404) {
+        throw new Error(`Issue #${issueNumber} not found in repository ${repo}`);
+      }
+      
+      const errorDetails = await checkResponse.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to check issue status (${checkResponse.status}): ${checkResponse.statusText} - ${errorDetails.substring(0, 200)}`);
+    }
+
+    const issue = await checkResponse.json();
+    
+    // If issue is already open, consider it a success
+    if (issue.state === 'open') {
+      return;
+    }
+
+    // Proceed to reopen the issue
     const response = await fetchWithTimeout(
       `https://api.github.com/repos/${owner}/${repoName}/issues/${issueNumber}`,
       {
@@ -545,18 +678,23 @@ async function reopenIssue(repo: string, issueNumber: string, githubToken: strin
       const errorDetails = await response.text().catch(() => 'Unknown error');
       throw new Error(`Failed to reopen issue (${response.status}): ${response.statusText} - ${errorDetails.substring(0, 200)}`);
     }
-  } catch (error) {
-    if (error.name === 'TimeoutError') {
-      throw new Error(`GitHub API request timed out while reopening issue: ${error.message}`);
-    }
-    throw error;
-  }
+   } catch (error) {
+     if (error instanceof Error && error.name === 'TimeoutError') {
+       throw new Error(`GitHub API request timed out while reopening issue: ${error.message}`);
+     }
+     throw error;
+   }
 }
 
 function createResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      // Add security headers
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+    },
   });
 }
 
@@ -580,9 +718,12 @@ function buildCommandResponse(result: CommandResult): Response {
     responseData.components = result.components;
   }
 
-  if (result.ephemeral) {
-    responseData.flags = 64;
-  }
+   // Handle flags properly using bitwise operations
+   // Bit 6 (value 64) = EPHEMERAL flag
+   if (result.ephemeral) {
+     // Preserve any existing flags and add the ephemeral flag
+     responseData.flags = ((responseData.flags as number) || 0) | 64;
+   }
 
   return createResponse({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -606,8 +747,8 @@ async function verifyDiscordRequest(request: Request): Promise<{ valid: boolean;
   }
 
   // Validate timestamp is a number and within tolerance (5 minutes)
-  const timestampNum = parseInt(timestamp, 10);
-  if (isNaN(timestampNum)) {
+  const timestampNum = Number.parseInt(timestamp, 10);
+  if (Number.isNaN(timestampNum)) {
     console.error('[Discord] Invalid timestamp format');
     return { valid: false, body: '' };
   }
@@ -639,6 +780,7 @@ async function verifyDiscordRequest(request: Request): Promise<{ valid: boolean;
   }
 
   // Limit body size to prevent abuse
+  // Discord interaction payloads are typically small, but set reasonable limit
   if (body.length > 1024 * 1024) { // 1MB limit
     console.error('[Discord] Request body too large');
     return { valid: false, body: '' };
@@ -663,42 +805,28 @@ async function handleApplicationCommand(interaction: DiscordInteraction): Promis
   
   try {
     // Validate interaction structure
-    if (!interaction || typeof interaction !== 'object') {
-      console.error('[Discord] Invalid interaction object received');
-      return createErrorResponse('❌ Invalid interaction data');
-    }
-
-    if (!interaction.data || typeof interaction.data !== 'object') {
-      console.error('[Discord] Missing or invalid interaction data');
-      return createErrorResponse('❌ Invalid command data');
+    const validationError = validateInteraction(interaction);
+    if (validationError) {
+      return validationError;
     }
 
     const commandName = interaction.data?.name;
-
-    if (!commandName || typeof commandName !== 'string') {
-      console.error('[Discord] No command name in interaction data', { 
-        interactionId: interaction.id,
-        data: interaction.data
-      });
-      return createErrorResponse('❌ No command name provided.');
+    
+    // Validate command name
+    const commandNameError = validateCommandName(commandName, interaction.id, interaction.data);
+    if (commandNameError) {
+      return commandNameError;
     }
 
-    // Additional command name validation
-    if (commandName.length > 100) {
-      console.error('[Discord] Command name too long', { 
-        interactionId: interaction.id,
-        commandNameLength: commandName.length
-      });
-      return createErrorResponse('❌ Command name is too long');
-    }
-
+    // At this point, commandName is guaranteed to be a non-empty string
     console.log(`[Discord] Executing command: /${commandName}`, { 
       interactionId: interaction.id,
       userId: interaction.member?.user?.id || interaction.user?.id
     });
 
-    const command = commands[commandName];
-
+    const command = commands[commandName as string];
+    
+    // Validate command exists
     if (!command) {
       console.warn(`[Discord] Unknown command: ${commandName}`, { 
         interactionId: interaction.id,
@@ -756,7 +884,8 @@ async function handleApplicationCommand(interaction: DiscordInteraction): Promis
         }
       }
       
-      return createErrorResponse(`❌ Error executing command: ${errorMessage}`);
+      // Return a generic error message to avoid exposing internal details
+      return createErrorResponse('❌ Error executing command. Please try again later.');
     }
   } catch (err: unknown) {
     const endTime = Date.now();
@@ -773,6 +902,43 @@ async function handleApplicationCommand(interaction: DiscordInteraction): Promis
     
     return createErrorResponse('❌ An unexpected error occurred. Please try again later.');
   }
+}
+
+// Helper function to validate interaction structure
+function validateInteraction(interaction: DiscordInteraction): Response | null {
+  if (!interaction || typeof interaction !== 'object') {
+    console.error('[Discord] Invalid interaction object received');
+    return createErrorResponse('❌ Invalid interaction data');
+  }
+
+  if (!interaction.data || typeof interaction.data !== 'object') {
+    console.error('[Discord] Missing or invalid interaction data');
+    return createErrorResponse('❌ Invalid command data');
+  }
+  
+  return null;
+}
+
+// Helper function to validate command name
+function validateCommandName(commandName: string | undefined, interactionId: string, interactionData: any): Response | null {
+  if (!commandName || typeof commandName !== 'string') {
+    console.error('[Discord] No command name in interaction data', { 
+      interactionId: interactionId,
+      data: interactionData
+    });
+    return createErrorResponse('❌ No command name provided.');
+  }
+
+  // Additional command name validation
+  if (commandName.length > 100) {
+    console.error('[Discord] Command name too long', { 
+      interactionId: interactionId,
+      commandNameLength: commandName.length
+    });
+    return createErrorResponse('❌ Command name is too long');
+  }
+  
+  return null;
 }
 
 function createRebaseModal(repo: string, prNumber: string): Response {
@@ -941,19 +1107,27 @@ function createCommentModal(repo: string, prNumber: string, isIssue: boolean = f
 function parseCustomId(customId: string): { repo: string; number: string } | null {
   const parts = customId.split(':');
   if (parts.length < 4) return null;
-  return { repo: parts[2], number: parts[3] };
+  const repo = parts[2];
+  const number = parts[3];
+  if (!repo || !number) return null;
+  return { repo, number };
 }
 
 function parseCreateIssueData(customId: string): { repo: string } | null {
   const parts = customId.split(':');
   if (parts.length < 3) return null;
-  return { repo: parts[2] };
+  const repo = parts[2];
+  if (!repo) return null;
+  return { repo };
 }
 
 function parseCreatePRData(customId: string): { repo: string; branch: string } | null {
   const parts = customId.split(':');
   if (parts.length < 4) return null;
-  return { repo: parts[2], branch: parts[3] };
+  const repo = parts[2];
+  const branch = parts[3];
+  if (!repo || !branch) return null;
+  return { repo, branch };
 }
 
 function isRebaseConfirm(customId: string): boolean {
@@ -967,7 +1141,10 @@ function isRebaseExecute(customId: string): boolean {
 function parseRebaseData(customId: string): { repo: string; prNumber: string } | null {
   const parts = customId.split(':');
   if (parts.length < 4) return null;
-  return { repo: parts[2], prNumber: parts[3] };
+  const repo = parts[2];
+  const prNumber = parts[3];
+  if (!repo || !prNumber) return null;
+  return { repo, prNumber };
 }
 
 async function handleRebaseExecute(repo: string, prNumber: string, interaction: DiscordInteraction): Promise<Response> {
@@ -1109,21 +1286,22 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
     }
   }
 
-  // Code Review button - show message to use Create PR
-  if (customId.startsWith('gh:review:')) {
-    const data = parseCreatePRData(customId);
-    if (data) {
-      return createResponse({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `👀 To start a code review, please create a Pull Request first using the **Create PR** button.`,
-          flags: 64,
-        },
-      });
-    }
-  }
+   // Code Review button - show message to use Create PR
+   if (customId.startsWith('gh:review:')) {
+     const data = parseCreatePRData(customId);
+     if (data) {
+       return createResponse({
+         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+         data: {
+           content: `👀 To start a code review, please create a Pull Request first using the **Create PR** button.`,
+           flags: 64,
+         },
+       });
+     }
+   }
 
-  return createErrorResponse(`✅ You clicked: **${customId}**`);
+   // Return error for unhandled component types
+   return createErrorResponse(`❌ Unhandled component interaction: **${customId}**`);
 }
 
 // Handler functions for direct actions
@@ -1241,9 +1419,23 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
   const customId = interaction.data?.custom_id || '';
   console.log(`[Discord] Modal submit: ${customId}`);
 
+  // Helper function to find a component value by custom_id
+  const getComponentValue = (components: any[], targetCustomId: string): string => {
+    for (const actionRow of components) {
+      if (actionRow?.components) {
+        for (const component of actionRow.components) {
+          if (component?.custom_id === targetCustomId) {
+            return component.value || '';
+          }
+        }
+      }
+    }
+    return '';
+  };
+
   // Handle rebase
   if (isRebaseExecute(customId)) {
-    const values = interaction.data?.components?.[0]?.components?.[0]?.value;
+    const values = getComponentValue(interaction.data?.components || [], 'confirm_text');
 
     if (values !== 'REBASE') {
       return createResponse({
@@ -1274,8 +1466,8 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const parts = customId.split(':');
     const repo = parts[2];
     
-    const title = interaction.data?.components?.[0]?.components?.[0]?.value || '';
-    const body = interaction.data?.components?.[1]?.components?.[0]?.value || '';
+    const title = getComponentValue(interaction.data?.components || [], 'issue_title');
+    const body = getComponentValue(interaction.data?.components || [], 'issue_body');
 
     if (!title) {
       return createResponse({
@@ -1326,9 +1518,9 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const repo = parts[2];
     const head = parts[3];
     
-    const title = interaction.data?.components?.[0]?.components?.[0]?.value || '';
-    const body = interaction.data?.components?.[1]?.components?.[0]?.value || '';
-    const base = interaction.data?.components?.[2]?.components?.[0]?.value || 'main';
+    const title = getComponentValue(interaction.data?.components || [], 'pr_title');
+    const body = getComponentValue(interaction.data?.components || [], 'pr_body');
+    const base = getComponentValue(interaction.data?.components || [], 'pr_base') || 'main';
 
     if (!title) {
       return createResponse({
@@ -1352,25 +1544,25 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
       });
     }
 
-    try {
-      const result = await createPullRequest(repo, title, body, head, base, githubToken);
-      return createResponse({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `✅ Pull request created: ${result.url}`,
-          flags: 64,
-        },
-      });
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      return createResponse({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `❌ Failed to create PR: ${errorMessage}`,
-          flags: 64,
-        },
-      });
-    }
+     try {
+       const result = await createPullRequest(repo, title, body, head, githubToken, base);
+       return createResponse({
+         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+         data: {
+           content: `✅ Pull request created: ${result.url}`,
+           flags: 64,
+         },
+       });
+     } catch (err: unknown) {
+       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+       return createResponse({
+         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+         data: {
+           content: `❌ Failed to create PR: ${errorMessage}`,
+           flags: 64,
+         },
+       });
+     }
   }
 
   // Handle merge PR
@@ -1418,7 +1610,7 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const repo = parts[2];
     const prNumber = parts[3];
     
-    const body = interaction.data?.components?.[0]?.components?.[0]?.value || '';
+    const body = getComponentValue(interaction.data?.components || [], 'comment_body');
 
     if (!body) {
       return createResponse({
@@ -1469,7 +1661,7 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     const repo = parts[2];
     const issueNumber = parts[3];
     
-    const body = interaction.data?.components?.[0]?.components?.[0]?.value || '';
+    const body = getComponentValue(interaction.data?.components || [], 'comment_body');
 
     if (!body) {
       return createResponse({
@@ -1519,10 +1711,10 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
 
 function handleUnknownType(type: number): Response {
   console.warn(`[Discord] Unhandled interaction type: ${type}`);
-  return createResponse(
-    { error: `Unhandled interaction type: ${type}` },
-    400
-  );
+  return createResponse({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: { content: `❌ Unhandled interaction type: ${type}` },
+  }, 400);
 }
 
 async function dispatchInteraction(interaction: DiscordInteraction): Promise<Response> {
