@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* Production-ready configuration */
   reactStrictMode: true,
-  swcMinify: true,
   compress: true,
   poweredByHeader: false,
   
