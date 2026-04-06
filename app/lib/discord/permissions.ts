@@ -51,9 +51,12 @@ export function checkPermission(
   
   // Get user's permission level
   const userLevel = getUserPermissionLevel(interaction);
+  const allowed = userLevel >= requiredLevel;
+  
+  console.log(`[Discord] Permission check for ${commandName}: required=${formatPermissionLevel(requiredLevel)}, user=${formatPermissionLevel(userLevel)}, allowed=${allowed}`);
   
   return {
-    allowed: userLevel >= requiredLevel,
+    allowed,
     level: userLevel,
     required: requiredLevel,
   };
@@ -64,26 +67,48 @@ export function checkPermission(
  */
 function getUserPermissionLevel(interaction: DiscordInteraction): PermissionLevel {
   const member = interaction.member;
-  if (!member) return PermissionLevel.EVERYONE;
+  
+  // Check if guild owner (when member data is missing)
+  if (!member && interaction.guild_id && interaction.user?.id) {
+    // If we're in a guild and have user data but no member data,
+    // check if the user is the guild owner
+    if (interaction.guild_id === interaction.user.id) {
+      console.log('[Discord] User identified as guild owner (no member data)');
+      return PermissionLevel.OWNER;
+    }
+    console.log('[Discord] No member data in interaction, assuming not owner');
+    return PermissionLevel.EVERYONE;
+  }
+  
+  if (!member) {
+    console.log('[Discord] No member or guild data in interaction');
+    return PermissionLevel.EVERYONE;
+  }
   
   // Check if guild owner
   if (interaction.guild_id && member.user?.id) {
-    // Note: We'd need to fetch guild info to check owner
-    // For now, assume not owner
+    if (interaction.guild_id === member.user.id) {
+      console.log('[Discord] User identified as guild owner');
+      return PermissionLevel.OWNER;
+    }
   }
   
   const permissions = parseInt(member.permissions || '0', 10);
+  console.log(`[Discord] Permission check: raw permissions = ${permissions}, userId = ${member.user?.id}`);
   
   // Check Administrator (0x8)
   if (permissions & 0x8) {
+    console.log('[Discord] User has Administrator permission');
     return PermissionLevel.ADMIN;
   }
   
   // Check Manage Messages (0x2000) or Manage Channels (0x10)
   if (permissions & 0x2000 || permissions & 0x10) {
+    console.log('[Discord] User has Moderator permission');
     return PermissionLevel.MODERATOR;
   }
   
+  console.log('[Discord] User has Everyone permission (no admin/mod perms found)');
   return PermissionLevel.EVERYONE;
 }
 
