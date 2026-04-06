@@ -746,18 +746,19 @@ async function verifyDiscordRequest(request: Request): Promise<{ valid: boolean;
     return { valid: false, body: '' };
   }
 
-  // Validate timestamp is a number and within tolerance (5 minutes)
-  const timestampNum = Number.parseInt(timestamp, 10);
-  if (Number.isNaN(timestampNum)) {
-    console.error('[Discord] Invalid timestamp format');
-    return { valid: false, body: '' };
-  }
+   // Validate timestamp is a number and within tolerance (5 minutes)
+   // Discord sends timestamp in seconds, convert to milliseconds for comparison
+   const timestampNum = Number.parseInt(timestamp, 10) * 1000;
+   if (Number.isNaN(timestampNum)) {
+     console.error('[Discord] Invalid timestamp format');
+     return { valid: false, body: '' };
+   }
 
-  const now = Date.now();
-  if (Math.abs(now - timestampNum) > 5 * 60 * 1000) {
-    console.error('[Discord] Timestamp outside tolerance window');
-    return { valid: false, body: '' };
-  }
+   const now = Date.now();
+   if (Math.abs(now - timestampNum) > 5 * 60 * 1000) {
+     console.error('[Discord] Timestamp outside tolerance window');
+     return { valid: false, body: '' };
+   }
 
   console.log('[Discord] Headers:', {
     signature: signature ? 'present' : 'missing',
@@ -1745,7 +1746,8 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!valid) {
     console.error('[Discord] Invalid signature');
-    return createResponse({ error: 'Invalid request signature' }, 401);
+    // Return empty body with 401 status for Discord verification failures
+    return new Response('', { status: 401 });
   }
 
   console.log('[Discord] Signature verified successfully');
