@@ -68,42 +68,60 @@ export function checkPermission(
 function getUserPermissionLevel(interaction: DiscordInteraction): PermissionLevel {
   const member = interaction.member;
   
-  // Check if guild owner (when member data is missing)
-  if (!member && interaction.guild_id && interaction.user?.id) {
-    // If we're in a guild and have user data but no member data,
-    // check if the user is the guild owner
-    if (interaction.guild_id === interaction.user.id) {
-      console.log('[Discord] User identified as guild owner (no member data)');
-      return PermissionLevel.OWNER;
-    }
-    console.log('[Discord] No member data in interaction, assuming not owner');
-    return PermissionLevel.EVERYONE;
-  }
+  console.log(`[Discord] Permission debug: member=${member ? 'present' : 'missing'}, guild_id=${interaction.guild_id}, user.id=${interaction.user?.id}`);
+  
+// Removed incorrect ownership check: cannot determine ownership without member data
+// Ownership check requires comparing guild owner ID with user ID, which requires member data
   
   if (!member) {
     console.log('[Discord] No member or guild data in interaction');
     return PermissionLevel.EVERYONE;
   }
   
-  // Check if guild owner
-  if (interaction.guild_id && member.user?.id) {
-    if (interaction.guild_id === member.user.id) {
-      console.log('[Discord] User identified as guild owner');
-      return PermissionLevel.OWNER;
-    }
+// Check if guild owner (highest priority)
+   if (interaction.guild_id && member.user?.id) {
+     console.log(`[Discord] Checking ownership: guild_id=${interaction.guild_id}, member.user.id=${member.user?.id}`);
+     if (interaction.guild_id === member.user.id) {
+       console.log('[Discord] User identified as guild owner');
+       return PermissionLevel.OWNER;
+     }
+   }
+  
+  // Handle permissions as string to avoid JavaScript precision issues with large numbers
+  const permissionsStr = (member.permissions || '0').toString();
+  console.log(`[Discord] Permission check: raw permissions = ${permissionsStr}, userId = ${member.user?.id}`);
+  
+  // Check if user is guild owner first (highest priority)
+  if (interaction.guild_id && member.user?.id && interaction.guild_id === member.user.id) {
+    console.log('[Discord] User identified as guild owner (double-check)');
+    return PermissionLevel.OWNER;
   }
   
-  const permissions = parseInt(member.permissions || '0', 10);
-  console.log(`[Discord] Permission check: raw permissions = ${permissions}, userId = ${member.user?.id}`);
+  // Convert to BigInt for accurate bitwise operations on large permission numbers
+  let permissionsBigint: bigint;
+  try {
+    permissionsBigint = BigInt(permissionsStr);
+  } catch (e) {
+    console.error(`[Discord] Failed to convert permissions to BigInt: ${permissionsStr}`, e);
+    // Fallback: check if string contains admin/mod bits by checking if it's large enough
+    // This is a heuristic - if the number is very large, it likely has admin bits set
+    const num = parseFloat(permissionsStr);
+    if (num > 1000000) { // Arbitrary large number threshold
+      console.log('[Discord] Assuming Administrator permission based on large permission value');
+      return PermissionLevel.ADMIN;
+    }
+    console.log('[Discord] User has Everyone permission (fallback due to parse error)');
+    return PermissionLevel.EVERYONE;
+  }
   
-  // Check Administrator (0x8)
-  if (permissions & 0x8) {
+  // Check Administrator (0x8) using BigInt bitwise AND
+  if ((permissionsBigint & BigInt(0x8)) !== BigInt(0)) {
     console.log('[Discord] User has Administrator permission');
     return PermissionLevel.ADMIN;
   }
   
-  // Check Manage Messages (0x2000) or Manage Channels (0x10)
-  if (permissions & 0x2000 || permissions & 0x10) {
+  // Check Manage Messages (0x2000) or Manage Channels (0x10) using BigInt
+  if ((permissionsBigint & BigInt(0x2000)) !== BigInt(0) || (permissionsBigint & BigInt(0x10)) !== BigInt(0)) {
     console.log('[Discord] User has Moderator permission');
     return PermissionLevel.MODERATOR;
   }
