@@ -66,8 +66,11 @@ export default function SettingsPage() {
   };
 
   // Apply theme changes immediately
-  const handleThemeChange = async (newTheme: string) => {
-    setLocalSettings(prev => ({ ...prev, theme: newTheme }));
+  const handleThemeChange = async (newTheme: 'dark' | 'light' | 'system') => {
+    setLocalSettings(prev => ({ 
+      ...prev, 
+      theme: newTheme as 'dark' | 'light' | 'system'
+    }));
     setSaveStatus(prev => ({ ...prev, appearance: 'saving' }));
     try {
       await updateSettings({ theme: newTheme });
@@ -88,10 +91,13 @@ export default function SettingsPage() {
     key: string,
     value: boolean | string | number
   ) => {
-    setLocalSettings(prev => ({ ...prev, [key]: value }));
+    setLocalSettings(prev => {
+      const updated = { ...prev, [key]: value };
+      return updated as UserSettings;
+    });
     setSaveStatus(prev => ({ ...prev, [section]: 'saving' }));
     try {
-      await updateSettings({ [key]: value });
+      await updateSettings({ [key]: value } as Partial<UserSettings>);
       setSaveStatus(prev => ({ ...prev, [section]: 'saved' }));
       setPendingChanges(prev => ({ ...prev, [section]: {} }));
       setTimeout(() => {
@@ -472,7 +478,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex bg-[#1a1a1a] rounded-lg p-1">
-                    {['dark', 'light'].map((theme) => (
+                    {(['dark', 'light'] as const).map((theme) => (
                       <button key={theme} onClick={() => handleThemeChange(theme)} className={`px-3 py-1 rounded text-sm capitalize ${localSettings.theme === theme ? 'bg-[#0070F3] text-white' : 'text-[#A1A1AA] hover:text-white'}`}>
                         {theme}
                       </button>
@@ -480,10 +486,10 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-white font-medium text-sm">Quick Toggle:</p>
-                    <button onClick={() => {
-                      const newTheme = localSettings.theme === 'dark' ? 'light' : 'dark';
-                      handleThemeChange(newTheme);
-                    }} className="flex items-center gap-2 px-3 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg transition-colors text-sm">
+<button onClick={() => {
+                       const newTheme = localSettings.theme === 'dark' ? 'light' : 'dark';
+                       handleThemeChange(newTheme as 'dark' | 'light' | 'system');
+                     }} className="flex items-center gap-2 px-3 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg transition-colors text-sm">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.415-1.415l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 01-1 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4.464-4.95l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 01-1.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" />
                       </svg>
