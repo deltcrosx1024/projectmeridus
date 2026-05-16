@@ -53,17 +53,17 @@ const aldrich = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "DeltCrosX DevHub",
+  title: "MERIDUS DEVELOPMENT",
   description: "Development Hub and Productivity Tools",
-  metadataBase: new URL("https://projectmeridus.com"),
+  metadataBase: new URL("https://meridusdev.in.th"),
   openGraph: {
     title: "DeltCrosX DevHub",
     description: "Development Hub and Productivity Tools",
-    url: "https://projectmeridus.com",
+    url: "https://meridusdev.in.th",
     siteName: "DeltCrosX DevHub",
     images: [
       {
-        url: "/og-image.png",
+        url: "./public/og-image.png",
         width: 1200,
         height: 630,
         alt: "DeltCrosX DevHub",
