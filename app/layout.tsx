@@ -53,20 +53,20 @@ const aldrich = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MERIDUS DEVELOPMENT",
+  title: "Productivity Hub for Developers | MERIDUS DEVELOPMENT",
   description: "Development Hub and Productivity Tools",
   metadataBase: new URL("https://meridusdev.in.th"),
   openGraph: {
-    title: "DeltCrosX DevHub",
-    description: "Development Hub and Productivity Tools",
+    title: "MERIDUS DEVELOPMENT",
+    description: "Meet MERIDUS DEVELOPMENT - Your Ultimate Productivity Hub for Developers. Streamline your workflow with our all-in-one platform designed to boost efficiency and collaboration. Join us today and take your development process to the next level!",
     url: "https://meridusdev.in.th",
-    siteName: "DeltCrosX DevHub",
+    siteName: "MERIDUS DEVELOPMENT",
     images: [
       {
-        url: "./public/og-image.png",
+        url: " ./public/og-image.png",
         width: 1200,
         height: 630,
-        alt: "DeltCrosX DevHub",
+        alt: "MERIDUS DEVELOPMENT",
         type: "image/png",
       },
     ],
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DeltCrosX DevHub",
+    title: "MERIDUS DEVELOPMENT",
     description: "Development Hub and Productivity Tools",
     images: ["/og-image.png"],
     creator: "@DeltCrosX",
