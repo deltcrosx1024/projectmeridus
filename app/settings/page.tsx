@@ -65,6 +65,45 @@ export default function SettingsPage() {
     }));
   };
 
+  // Apply theme changes immediately
+  const handleThemeChange = async (newTheme: string) => {
+    setLocalSettings(prev => ({ ...prev, theme: newTheme }));
+    setSaveStatus(prev => ({ ...prev, appearance: 'saving' }));
+    try {
+      await updateSettings({ theme: newTheme });
+      setSaveStatus(prev => ({ ...prev, appearance: 'saved' }));
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, appearance: 'idle' }));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to update theme:', err);
+      setSaveStatus(prev => ({ ...prev, appearance: 'idle' }));
+      setLocalSettings(prev => ({ ...prev, theme: settings.theme }));
+    }
+  };
+
+  // Apply any setting change immediately
+  const handleImmediateSave = async (
+    section: keyof PendingChanges,
+    key: string,
+    value: boolean | string | number
+  ) => {
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
+    setSaveStatus(prev => ({ ...prev, [section]: 'saving' }));
+    try {
+      await updateSettings({ [key]: value });
+      setSaveStatus(prev => ({ ...prev, [section]: 'saved' }));
+      setPendingChanges(prev => ({ ...prev, [section]: {} }));
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
+      }, 2000);
+    } catch (err) {
+      console.error(`Failed to update ${key}:`, err);
+      setSaveStatus(prev => ({ ...prev, [section]: 'idle' }));
+      setLocalSettings(prev => ({ ...prev, [key]: settings[key as keyof UserSettings] }));
+    }
+  };
+
   const applyChanges = async (section: keyof PendingChanges) => {
     const changes = pendingChanges[section];
     if (Object.keys(changes).length === 0) return;
@@ -283,7 +322,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Webhook Notifications</p>
                   <p className="text-sm text-[#666666]">Receive Discord alerts for subscribed events</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'webhookNotifications', !localSettings.webhookNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.webhookNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'webhookNotifications', !localSettings.webhookNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.webhookNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.webhookNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -293,7 +332,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Issue Alerts</p>
                   <p className="text-sm text-[#666666]">Get notified when new issues are created</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'issueAlerts', !localSettings.issueAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.issueAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'issueAlerts', !localSettings.issueAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.issueAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.issueAlerts ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -303,7 +342,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Pull Request Alerts</p>
                   <p className="text-sm text-[#666666]">Get notified when PRs are opened or updated</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'prAlerts', !localSettings.prAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.prAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'prAlerts', !localSettings.prAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.prAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.prAlerts ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -313,7 +352,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Release Alerts</p>
                   <p className="text-sm text-[#666666]">Get notified when new releases are published</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'releaseAlerts', !localSettings.releaseAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.releaseAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'releaseAlerts', !localSettings.releaseAlerts)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.releaseAlerts ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.releaseAlerts ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -323,7 +362,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Commit Notifications</p>
                   <p className="text-sm text-[#666666]">Receive updates on new commits</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'commitNotifications', !localSettings.commitNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.commitNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'commitNotifications', !localSettings.commitNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.commitNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.commitNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -333,7 +372,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">DM Notifications</p>
                   <p className="text-sm text-[#666666]">Receive notifications via Discord DM</p>
                 </div>
-                <button onClick={() => handleLocalChange('notifications', 'dmNotifications', !localSettings.dmNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.dmNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('notifications', 'dmNotifications', !localSettings.dmNotifications)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.dmNotifications ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.dmNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -343,20 +382,13 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Digest Mode</p>
                   <p className="text-sm text-[#666666]">How often to receive notification summaries</p>
                 </div>
-                <select value={localSettings.digestMode} onChange={(e) => handleLocalChange('notifications', 'digestMode', e.target.value)} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                <select value={localSettings.digestMode} onChange={(e) => handleImmediateSave('notifications', 'digestMode', e.target.value)} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
                   <option value="instant">Instant</option>
                   <option value="hourly">Hourly</option>
                   <option value="daily">Daily</option>
                 </select>
               </div>
             </div>
-
-            {hasNotificationChanges && (
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => applyChanges('notifications')} className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg">Apply Changes</button>
-                <button onClick={() => resetChanges('notifications')} className="px-4 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded-lg">Cancel</button>
-              </div>
-            )}
           </div>
 
           {/* Repository */}
@@ -375,7 +407,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Default View</p>
                   <p className="text-sm text-[#666666]">Choose how repositories are displayed</p>
                 </div>
-                <select value={localSettings.defaultView} onChange={(e) => handleLocalChange('repository', 'defaultView', e.target.value)} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                <select value={localSettings.defaultView} onChange={(e) => handleImmediateSave('repository', 'defaultView', e.target.value)} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
                   <option value="grid">Grid</option>
                   <option value="list">List</option>
                   <option value="compact">Compact</option>
@@ -387,7 +419,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Items Per Page</p>
                   <p className="text-sm text-[#666666]">Number of items to show per page</p>
                 </div>
-                <select value={localSettings.itemsPerPage} onChange={(e) => handleLocalChange('repository', 'itemsPerPage', parseInt(e.target.value))} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                <select value={localSettings.itemsPerPage} onChange={(e) => handleImmediateSave('repository', 'itemsPerPage', parseInt(e.target.value))} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
                   <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="20">20</option>
@@ -400,7 +432,7 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Auto Refresh</p>
                   <p className="text-sm text-[#666666]">Automatically refresh repository data</p>
                 </div>
-                <button onClick={() => handleLocalChange('repository', 'autoRefresh', !localSettings.autoRefresh)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.autoRefresh ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('repository', 'autoRefresh', !localSettings.autoRefresh)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.autoRefresh ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.autoRefresh ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
@@ -411,7 +443,7 @@ export default function SettingsPage() {
                     <p className="text-white font-medium">Refresh Interval</p>
                     <p className="text-sm text-[#666666]">How often to refresh data</p>
                   </div>
-                  <select value={localSettings.refreshInterval} onChange={(e) => handleLocalChange('repository', 'refreshInterval', parseInt(e.target.value))} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
+                  <select value={localSettings.refreshInterval} onChange={(e) => handleImmediateSave('repository', 'refreshInterval', parseInt(e.target.value))} className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm">
                     <option value="1">1 minute</option>
                     <option value="5">5 minutes</option>
                     <option value="10">10 minutes</option>
@@ -420,13 +452,6 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-
-            {hasRepositoryChanges && (
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => applyChanges('repository')} className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg">Apply Changes</button>
-                <button onClick={() => resetChanges('repository')} className="px-4 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded-lg">Cancel</button>
-              </div>
-            )}
           </div>
 
           {/* Appearance */}
@@ -448,7 +473,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex bg-[#1a1a1a] rounded-lg p-1">
                     {['dark', 'light'].map((theme) => (
-                      <button key={theme} onClick={() => handleLocalChange('appearance', 'theme', theme)} className={`px-3 py-1 rounded text-sm capitalize ${localSettings.theme === theme ? 'bg-[#0070F3] text-white' : 'text-[#A1A1AA] hover:text-white'}`}>
+                      <button key={theme} onClick={() => handleThemeChange(theme)} className={`px-3 py-1 rounded text-sm capitalize ${localSettings.theme === theme ? 'bg-[#0070F3] text-white' : 'text-[#A1A1AA] hover:text-white'}`}>
                         {theme}
                       </button>
                     ))}
@@ -457,9 +482,7 @@ export default function SettingsPage() {
                     <p className="text-white font-medium text-sm">Quick Toggle:</p>
                     <button onClick={() => {
                       const newTheme = localSettings.theme === 'dark' ? 'light' : 'dark';
-                      handleLocalChange('appearance', 'theme', newTheme);
-                      // Apply immediately without waiting for save
-                      setLocalSettings(prev => ({ ...prev, theme: newTheme }));
+                      handleThemeChange(newTheme);
                     }} className="flex items-center gap-2 px-3 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg transition-colors text-sm">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.415-1.415l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 01-1 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-4.464-4.95l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 01-1.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" />
@@ -475,18 +498,11 @@ export default function SettingsPage() {
                   <p className="text-white font-medium">Compact Mode</p>
                   <p className="text-sm text-[#666666]">Show more content with less spacing</p>
                 </div>
-                <button onClick={() => handleLocalChange('appearance', 'compactMode', !localSettings.compactMode)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.compactMode ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
+                <button onClick={() => handleImmediateSave('appearance', 'compactMode', !localSettings.compactMode)} className={`relative w-11 h-6 rounded-full transition-colors ${localSettings.compactMode ? 'bg-[#0070F3]' : 'bg-[#333333]'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${localSettings.compactMode ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
             </div>
-
-            {hasAppearanceChanges && (
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => applyChanges('appearance')} className="px-4 py-2 bg-[#0070F3] hover:bg-[#0060df] text-white rounded-lg">Apply Changes</button>
-                <button onClick={() => resetChanges('appearance')} className="px-4 py-2 bg-[#333333] hover:bg-[#1a1a1a] text-white rounded-lg">Cancel</button>
-              </div>
-            )}
           </div>
 
           {/* Data Export */}
