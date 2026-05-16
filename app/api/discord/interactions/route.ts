@@ -1585,7 +1585,7 @@ async function handleModalSubmit(interaction: DiscordInteraction): Promise<Respo
     }
 
     try {
-      await mergePullRequest(repo, prNumber, 'merge', githubToken);
+      await mergePullRequest(repo, prNumber, githubToken);
       return createResponse({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {

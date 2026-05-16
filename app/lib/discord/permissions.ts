@@ -105,7 +105,7 @@ function getUserPermissionLevel(interaction: DiscordInteraction): PermissionLeve
     console.error(`[Discord] Failed to convert permissions to BigInt: ${permissionsStr}`, e);
     // Fallback: check if string contains admin/mod bits by checking if it's large enough
     // This is a heuristic - if the number is very large, it likely has admin bits set
-    const num = parseFloat(permissionsStr);
+    const num = Number.parseFloat(permissionsStr);
     if (num > 1000000) { // Arbitrary large number threshold
       console.log('[Discord] Assuming Administrator permission based on large permission value');
       return PermissionLevel.ADMIN;

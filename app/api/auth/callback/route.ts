@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const guildId = url.searchParams.get('guild_id');
-  const permissions = url.searchParams.get('permissions');
+  const permissions = url.searchParams.get('permissions'); // For potential future use in bot install flow
   const error = url.searchParams.get('error');
   const errorDescription = url.searchParams.get('error_description');
   
