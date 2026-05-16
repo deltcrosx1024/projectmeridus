@@ -40,6 +40,12 @@ const sfMono = localFont({
   display: 'swap',
 });
 
+const meridusDisplay = localFont({
+  src: [{ path: './fonts/Meridus Display/MeridusDisplay-Regular.otf', weight: '400', style: 'normal' }],
+  variable: "--font-meridus-display",
+  display: 'swap',
+});
+
 const aldrich = localFont({
   src: [{ path: './fonts/SF Pro/SF-Pro-Display-Bold.otf', weight: '700', style: 'normal' }],
   variable: "--font-aldrich",
@@ -49,6 +55,34 @@ const aldrich = localFont({
 export const metadata: Metadata = {
   title: "DeltCrosX DevHub",
   description: "Development Hub and Productivity Tools",
+  metadataBase: new URL("https://projectmeridus.com"),
+  openGraph: {
+    title: "DeltCrosX DevHub",
+    description: "Development Hub and Productivity Tools",
+    url: "https://projectmeridus.com",
+    siteName: "DeltCrosX DevHub",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "DeltCrosX DevHub",
+        type: "image/png",
+      },
+    ],
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DeltCrosX DevHub",
+    description: "Development Hub and Productivity Tools",
+    images: ["/og-image.png"],
+    creator: "@DeltCrosX",
+  },
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -62,7 +96,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body
-        className={`${sfProDisplay.variable} ${sfMono.variable} ${aldrich.variable} antialiased`}
+        className={`${sfProDisplay.variable} ${sfMono.variable} ${meridusDisplay.variable} ${aldrich.variable} antialiased`}
       >
         <SpeedInsights />
         <AuthProvider>
