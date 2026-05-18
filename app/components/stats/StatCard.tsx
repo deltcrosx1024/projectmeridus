@@ -12,12 +12,16 @@
 'use client';
 
 import { StatCard } from '@/app/types';
+import { useTheme } from '@/app/contexts/ThemeContext';
 
 interface StatCardProps {
   stat: StatCard;
 }
 
 export default function StatCardComponent({ stat }: StatCardProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  
   const colorMap = {
     green: 'text-[#22c55e]',
     orange: 'text-[#f59e0b]',
@@ -26,12 +30,12 @@ export default function StatCardComponent({ stat }: StatCardProps) {
   };
 
   return (
-    <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-6 hover:border-[#555555] transition-all">
+    <div className={`border rounded-lg p-6 hover:transition-all ${isDark ? 'bg-[#0a0a0a] border-[#333333] hover:border-[#555555]' : 'bg-white border-gray-300 hover:border-gray-400'}`}>
       {/* ===== STAT LABEL ===== */}
-      <div className="text-[#A1A1AA] text-sm font-semibold mb-2">{stat.label}</div>
+      <div className={`text-sm font-semibold mb-2 ${isDark ? 'text-[#A1A1AA]' : 'text-gray-600'}`}>{stat.label}</div>
 
       {/* ===== STAT VALUE ===== */}
-      <div className="text-4xl font-bold text-white mb-2">{stat.value}</div>
+      <div className={`text-4xl font-bold mb-2 ${isDark ? 'text-white' : 'text-black'}`}>{stat.value}</div>
 
       {/* ===== STAT CHANGE ===== */}
       <div className={`text-sm ${colorMap[stat.changeColor]}`}>{stat.change}</div>

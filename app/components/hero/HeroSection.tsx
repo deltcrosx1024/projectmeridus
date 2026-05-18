@@ -9,21 +9,24 @@
 'use client';
 import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { useTheme } from '@/app/contexts/ThemeContext';
 import { useState } from 'react';
 import Link from 'next/link';
 
 export default function HeroSection() {
   const { githubUser, discordUser, isLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   return (
     <div className="mb-16">
       {/* ===== HERO TITLE ===== */}
-      <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 leading-tight">
+      <h1 className={`text-5xl md:text-6xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-black'}`}>
         Github Monitoring Centre
       </h1>
 
       {/* ===== HERO DESCRIPTION ===== */}
-      <p className="text-xl text-[#A1A1AA] mb-8 max-w-2xl leading-relaxed">
+      <p className={`text-xl mb-8 max-w-2xl leading-relaxed ${isDark ? 'text-[#A1A1AA]' : 'text-gray-600'}`}>
         Manage, monitor, and collaborate on your GitHub repositories all in one place. Connect with GitHub and streamline your development workflow.
       </p>
 

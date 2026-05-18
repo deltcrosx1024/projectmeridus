@@ -26,10 +26,14 @@ import PullRequestsSection from '@/app/components/pull-requests/PullRequestsSect
 import ActivityFeed from '@/app/components/activity/ActivityFeed';
 import VercelDeployments from '@/app/components/vercel/VercelDeployments';
 import { Analytics } from '@vercel/analytics/next';
+import { useTheme } from '@/app/contexts/ThemeContext';
 
 export default function Home() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   return (
-    <div className="min-h-screen bg-black">
+    <div className={isDark ? 'min-h-screen bg-black' : 'min-h-screen bg-white'}>
       <Analytics />
       {/* ===== HEADER COMPONENT ===== */}
       <Header />
