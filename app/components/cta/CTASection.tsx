@@ -152,17 +152,17 @@ export default function CTASection() {
   }
 
   return (
-    <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-12 text-center">
+    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-12 text-center">
       {/* ===== CTA TITLE ===== */}
       <h2 
-        className="text-3xl font-bold text-white mb-4" 
+        className="text-3xl font-bold text-[var(--foreground)] mb-4" 
       >
         {ctaContent.title}
       </h2>
 
       {/* ===== CTA DESCRIPTION ===== */}
       <p 
-        className="text-[#A1A1AA] mb-8 max-w-2xl mx-auto" 
+        className="text-[var(--muted)] mb-8 max-w-2xl mx-auto" 
       >
         {ctaContent.description}
       </p>

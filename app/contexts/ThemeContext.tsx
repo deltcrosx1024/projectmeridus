@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useSettingsContext } from './SettingsContext';
+import { useSettingsContext } from './SettingsContext'; // settings provider for saved theme preference
 
 type Theme = 'dark' | 'light' | 'system';
 
@@ -16,9 +16,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { settings, updateSettings } = useSettingsContext();
-  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark'); // current theme after system resolution
 
-  const theme = settings.theme || 'dark';
+  const theme = settings.theme || 'dark'; // selected theme preference
 
   useEffect(() => {
     const root = document.documentElement;
@@ -30,10 +30,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       newTheme = theme;
     }
     
-    setResolvedTheme(newTheme);
+    setResolvedTheme(newTheme); // update theme state used by components
     
     // Set data-theme attribute instead of adding/removing classes
-    root.setAttribute('data-theme', newTheme);
+    root.setAttribute('data-theme', newTheme); // root attribute used for global theme styling
   }, [theme]);
 
   // Listen for system theme changes
@@ -50,12 +50,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   const setTheme = async (newTheme: Theme) => {
-    await updateSettings({ theme: newTheme });
+    await updateSettings({ theme: newTheme }); // persist theme preference
   };
 
   const toggleTheme = () => {
     const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
+    setTheme(newTheme); // toggle between dark and light
   };
 
   return (

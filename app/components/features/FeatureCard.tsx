@@ -95,17 +95,17 @@ export default function FeatureCardComponent({ feature }: FeatureCardProps) {
   const colors = colorMap[feature.color];
 
   return (
-    <div className={`bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-lg p-8 transition-all group ${colors.border}`}>
+    <div className={`bg-[var(--card-bg)] backdrop-blur border border-[var(--card-border)] rounded-lg p-8 transition-all group ${colors.border}`}>
       {/* ===== FEATURE ICON ===== */}
       <div className={`w-12 h-12 ${colors.bg} rounded-lg flex items-center justify-center mb-4 ${colors.hover} transition-all`}>
         <div className={colors.text}>{iconMap[feature.icon]}</div>
       </div>
 
       {/* ===== FEATURE TITLE ===== */}
-      <h3 className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'var(--font-aldrich)' }}>{feature.title}</h3>
+      <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'var(--font-aldrich)' }}>{feature.title}</h3>
 
       {/* ===== FEATURE DESCRIPTION ===== */}
-      <p className="text-slate-400" style={{ fontFamily: 'var(--font-archivo)' }}>{feature.description}</p>
+      <p className="text-[var(--muted)]" style={{ fontFamily: 'var(--font-archivo)' }}>{feature.description}</p>
     </div>
   );
 }

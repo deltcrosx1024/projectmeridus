@@ -134,27 +134,27 @@ export default function DataExport() {
   };
 
   return (
-    <div className="bg-slate-800/80 border border-slate-700 rounded-lg p-6">
+    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-6">
       <h2 
-        className="text-xl font-bold text-white mb-4"
+        className="text-xl font-bold text-[var(--foreground)] mb-4"
         style={{ fontFamily: 'var(--font-aldrich)' }}
       >
         Data Export
       </h2>
-      <p className="text-slate-400 mb-6">
+      <p className="text-[var(--muted)] mb-6">
         Download your data in JSON or CSV format for backup or analysis.
       </p>
 
       {/* Format Selection */}
       <div className="mb-6">
-        <label className="text-sm text-slate-300 mb-2 block">Export Format</label>
+        <label className="text-sm text-[var(--muted)] mb-2 block">Export Format</label>
         <div className="flex gap-2">
           <button
             onClick={() => setExportFormat('json')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportFormat === 'json'
                 ? 'bg-blue-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                : 'bg-[var(--card-border)] text-[var(--foreground)] hover:bg-[var(--card-border)]/80'
             }`}
           >
             JSON
@@ -164,13 +164,13 @@ export default function DataExport() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportFormat === 'csv'
                 ? 'bg-blue-600 text-white'
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                : 'bg-[var(--card-border)] text-[var(--foreground)] hover:bg-[var(--card-border)]/80'
             }`}
           >
             CSV
           </button>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
+        <p className="text-xs text-[var(--muted)] mt-2">
           {exportFormat === 'json' 
             ? 'JSON format includes all data with nested objects' 
             : 'CSV format is compatible with Excel and other spreadsheet apps'}
@@ -243,23 +243,23 @@ function ExportCard({
       disabled={isExporting || disabled}
       className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
         disabled 
-          ? 'opacity-50 cursor-not-allowed bg-slate-800' 
+          ? 'opacity-50 cursor-not-allowed bg-[var(--card-border)]' 
           : primary
             ? 'bg-blue-600/20 border border-blue-600/50 hover:bg-blue-600/30'
-            : 'bg-slate-700/50 hover:bg-slate-700'
+            : 'bg-[var(--card-bg)] hover:bg-[var(--card-border)]/10'
       }`}
     >
-      <div className={`flex-shrink-0 ${primary ? 'text-blue-400' : 'text-slate-400'}`}>
+      <div className={`flex-shrink-0 ${primary ? 'text-blue-400' : 'text-[var(--muted)]'}`}>
         {icon}
       </div>
       <div className="flex-1 text-left">
-        <p className={`font-medium ${primary ? 'text-blue-400' : 'text-white'}`}>{title}</p>
-        <p className="text-sm text-slate-400">{description}</p>
+        <p className={`font-medium ${primary ? 'text-blue-400' : 'text-[var(--foreground)]'}`}>{title}</p>
+        <p className="text-sm text-[var(--muted)]">{description}</p>
       </div>
       {isExporting ? (
-        <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-[var(--muted)] border-t-transparent rounded-full animate-spin" />
       ) : (
-        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       )}

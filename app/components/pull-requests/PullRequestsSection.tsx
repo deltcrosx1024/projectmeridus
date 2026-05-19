@@ -64,12 +64,12 @@ export default function PullRequestsSection() {
     return (
       <section className={`py-8 px-4 ${compactMode ? 'py-4' : ''}`}>
         <div className="max-w-7xl mx-auto">
-          <h2 className={`font-bold ${compactMode ? 'text-xl' : 'text-2xl'} mb-4`} style={{ fontFamily: 'var(--font-aldrich)' }}>
+          <h2 className={`font-bold ${compactMode ? 'text-xl' : 'text-2xl'} mb-4 text-[var(--foreground)]`} style={{ fontFamily: 'var(--font-aldrich)' }}>
             Pull Requests
           </h2>
           <div className="animate-pulse space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 bg-slate-800 rounded-lg" />
+              <div key={i} className="h-16 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg" />
             ))}
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function PullRequestsSection() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 filter === 'open' 
                   ? 'bg-green-600/20 text-green-400 border border-green-600/50' 
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-[var(--card-bg)] text-[var(--muted)] border border-[var(--card-border)] hover:bg-[var(--card-border)]/10'
               }`}
             >
               Open ({openCount})
@@ -108,7 +108,7 @@ export default function PullRequestsSection() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 filter === 'closed' 
                   ? 'bg-purple-600/20 text-purple-400 border border-purple-600/50' 
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-[var(--card-bg)] text-[var(--muted)] border border-[var(--card-border)] hover:bg-[var(--card-border)]/10'
               }`}
             >
               Closed ({closedCount})
@@ -118,7 +118,7 @@ export default function PullRequestsSection() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 filter === 'all' 
                   ? 'bg-blue-600/20 text-blue-400 border border-blue-600/50' 
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  : 'bg-[var(--card-bg)] text-[var(--muted)] border border-[var(--card-border)] hover:bg-[var(--card-border)]/10'
               }`}
             >
               All ({prs.length})
@@ -127,7 +127,7 @@ export default function PullRequestsSection() {
         </div>
 
         {filteredPRs.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-[var(--muted)]">
             <p>No {filter !== 'all' ? filter : ''} pull requests found</p>
           </div>
         ) : (
@@ -152,7 +152,7 @@ export default function PullRequestsSection() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 
-                      className={`font-semibold text-white group-hover:text-blue-400 transition-colors truncate ${compactMode ? 'text-sm' : 'text-base'}`}
+                      className={`font-semibold text-[var(--foreground)] group-hover:text-blue-400 transition-colors truncate ${compactMode ? 'text-sm' : 'text-base'}`}
                       style={{ fontFamily: 'var(--font-aldrich)' }}
                     >
                       {pr.title}
@@ -165,8 +165,8 @@ export default function PullRequestsSection() {
                       {pr.state}
                     </span>
                   </div>
-                  <p className={`text-slate-400 ${compactMode ? 'text-xs' : 'text-sm'}`}>
-                    <span className="font-medium text-slate-300">{pr.repository}</span>
+                  <p className={`text-[var(--muted)] ${compactMode ? 'text-xs' : 'text-sm'}`}>
+                    <span className="font-medium text-blue-400">{pr.repository}</span>
                     {' '}#{pr.number} opened {formatTimeAgo(pr.created_at)} by {pr.user?.login || 'unknown'}
                   </p>
                 </div>
