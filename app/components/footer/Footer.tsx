@@ -17,7 +17,7 @@ import { useTheme } from '@/app/contexts/ThemeContext'; // theme context import
 
 export default function Footer() {
   const { resolvedTheme } = useTheme(); // resolvedTheme drives the footer theme mode
-  const isDark = resolvedTheme === 'dark'; // derived boolean for conditional classes
+  const isDark = resolvedTheme === 'dark'; // NOSONAR - Reserved for potential future use if conditional logic is needed based on theme mode. 
   
   return (
     <footer className="border-t mt-16 border-[var(--card-border)] bg-[var(--background)]"> {/* footer background and border now use theme variables */}
