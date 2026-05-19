@@ -5,53 +5,60 @@ import Highcharts from 'highcharts';
 import { useApiMetrics, formatResponseTime, getResponseTimeColor } from '@/app/lib/useApiMetrics';
 
 if (typeof document !== 'undefined') {
+  const rootStyles = getComputedStyle(document.documentElement);
+  const chartBackground = rootStyles.getPropertyValue('--card-bg').trim() || '#0f0f0f';
+  const chartBorder = rootStyles.getPropertyValue('--card-border').trim() || '#333333';
+  const chartForeground = rootStyles.getPropertyValue('--foreground').trim() || '#e4e4e7';
+  const chartTooltip = rootStyles.getPropertyValue('--card-border').trim() || '#1a1a1a';
+
   const style = document.createElement('style');
   style.innerHTML = `
-    .highcharts-background { fill: #0f0f0f !important; }
-    .highcharts-plot-background { fill: #0f0f0f !important; }
-    .highcharts-root { background-color: #0f0f0f !important; }
-    .highcharts-container { background-color: #0f0f0f !important; }
-    .highcharts-legend-box { fill: #0f0f0f !important; stroke: #333333 !important; }
-    .highcharts-axis-labels text { fill: #e4e4e7 !important; }
-    .highcharts-axis-title text { fill: #e4e4e7 !important; }
-    .highcharts-grid-line { stroke: #222222 !important; }
-    .highcharts-tick { stroke: #333333 !important; }
-    .highcharts-axis-line { stroke: #333333 !important; }
-    .highcharts-legend-item text { fill: #e4e4e7 !important; }
-    .highcharts-tooltip-box { fill: #1a1a1a !important; stroke: #333333 !important; }
+    .highcharts-background { fill: ${chartBackground} !important; }
+    .highcharts-plot-background { fill: ${chartBackground} !important; }
+    .highcharts-root { background-color: ${chartBackground} !important; }
+    .highcharts-container { background-color: ${chartBackground} !important; }
+    .highcharts-legend-box { fill: ${chartBackground} !important; stroke: ${chartBorder} !important; }
+    .highcharts-axis-labels text { fill: ${chartForeground} !important; }
+    .highcharts-axis-title text { fill: ${chartForeground} !important; }
+    .highcharts-grid-line { stroke: ${chartBorder} !important; }
+    .highcharts-tick { stroke: ${chartBorder} !important; }
+    .highcharts-axis-line { stroke: ${chartBorder} !important; }
+    .highcharts-legend-item text { fill: ${chartForeground} !important; }
+    .highcharts-tooltip-box { fill: ${chartTooltip} !important; stroke: ${chartBorder} !important; }
   `;
   document.head.appendChild(style);
   
   Highcharts.setOptions({
     chart: {
-      backgroundColor: '#0f0f0f',
-      plotBackgroundColor: '#0f0f0f',
-      plotBorderColor: '#333333',
+      backgroundColor: chartBackground,
+      plotBackgroundColor: chartBackground,
+      plotBorderColor: chartBorder,
     },
     colors: ['#22c55e', '#0070F3', '#5865F2', '#f59e0b'],
-    title: { style: { color: '#e4e4e7' } },
+    title: { style: { color: chartForeground } },
     xAxis: {
-      lineColor: '#333333',
-      tickColor: '#333333',
-      labels: { style: { color: '#e4e4e7' } },
+      lineColor: chartBorder,
+      tickColor: chartBorder,
+      labels: { style: { color: chartForeground } },
     },
     yAxis: {
-      gridLineColor: '#222222',
-      labels: { style: { color: '#e4e4e7' } },
-      title: { style: { color: '#e4e4e7' } },
+      gridLineColor: chartBorder,
+      labels: { style: { color: chartForeground } },
+      title: { style: { color: chartForeground } },
     },
     legend: {
-      backgroundColor: '#0f0f0f',
-      borderColor: '#333333',
+      backgroundColor: chartBackground,
+      borderColor: chartBorder,
       borderWidth: 1,
-      itemStyle: { color: '#e4e4e7', fontWeight: '500' },
+      itemStyle: { color: chartForeground, fontWeight: '500' },
       itemHoverStyle: { color: '#60a5fa' },
       itemHiddenStyle: { color: '#71717a' },
     },
     tooltip: {
-      backgroundColor: '#1a1a1a',
-      borderColor: '#333333',
-      style: { color: '#ffffff' },
+      shared: true,
+      backgroundColor: chartTooltip,
+      borderColor: chartBorder,
+      style: { color: chartForeground },
     },
   });
 }
@@ -302,17 +309,17 @@ export default function ApiMetrics({
 
   if (isLoading && !isCollapsed && !hasHistory) {
     return (
-      <div className="bg-[#0f0f0f] border border-[#333333] rounded-lg p-6 mb-16">
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-6 mb-16">
         <div className="animate-pulse">
-          <div className="h-6 bg-[#1a1a1a] rounded w-1/4 mb-4"></div>
-          <div className="h-[300px] bg-[#1a1a1a] rounded"></div>
+          <div className="h-6 bg-[var(--card-border)] rounded w-1/4 mb-4"></div>
+          <div className="h-[300px] bg-[var(--card-border)] rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#0f0f0f] border border-[#333333] rounded-lg p-6 mb-16">
+    <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-6 mb-16">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <svg
@@ -328,13 +335,13 @@ export default function ApiMetrics({
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             />
           </svg>
-          <h2 className="text-xl font-bold text-white">API Response Times</h2>
+          <h2 className="text-xl font-bold text-[var(--foreground)]">API Response Times</h2>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => refetch()}
-            className="px-3 py-1.5 text-sm bg-[#151515] border border-[#333333] rounded-md text-[#A1A1AA] hover:border-[#555555] hover:text-white transition-all"
+            className="px-3 py-1.5 text-sm bg-[var(--card-bg)] border border-[var(--card-border)] rounded-md text-[var(--muted)] hover:border-[var(--accent)]/40 hover:text-[var(--foreground)] transition-all"
           >
             Refresh
           </button>
@@ -342,7 +349,7 @@ export default function ApiMetrics({
           {!alwaysExpanded && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="px-3 py-1.5 text-sm bg-[#151515] border border-[#333333] rounded-md text-[#A1A1AA] hover:border-[#555555] hover:text-white transition-all"
+              className="px-3 py-1.5 text-sm bg-[var(--card-bg)] border border-[var(--card-border)] rounded-md text-[var(--muted)] hover:border-[var(--accent)]/40 hover:text-[var(--foreground)] transition-all"
             >
               {isCollapsed ? 'Expand' : 'Collapse'}
             </button>
@@ -352,18 +359,18 @@ export default function ApiMetrics({
 
       {(!isCollapsed || alwaysExpanded) && (
         <>
-          <div className="relative rounded-lg p-4 bg-[#0f0f0f]">
+          <div className="relative rounded-lg p-4 bg-[var(--card-bg)]">
             <div ref={chartRef} />
             {isLoading && hasHistory && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg pointer-events-none">
-                <span className="text-sm text-[#A1A1AA]">Refreshing...</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/10 rounded-lg pointer-events-none">
+                <span className="text-sm text-[var(--muted)]">Refreshing...</span>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <div className="text-sm text-[#A1A1AA] mb-1">GitHub API</div>
+            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4">
+              <div className="text-sm text-[var(--muted)] mb-1">GitHub API</div>
               <div
                 className="text-2xl font-bold"
                 style={{ color: getResponseTimeColor(metrics.github.responseTime) }}
@@ -372,8 +379,8 @@ export default function ApiMetrics({
               </div>
             </div>
 
-            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <div className="text-sm text-[#A1A1AA] mb-1">Vercel API</div>
+            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4">
+              <div className="text-sm text-[var(--muted)] mb-1">Vercel API</div>
               <div
                 className="text-2xl font-bold"
                 style={{ color: getResponseTimeColor(metrics.vercel.responseTime) }}
@@ -382,8 +389,8 @@ export default function ApiMetrics({
               </div>
             </div>
 
-            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <div className="text-sm text-[#A1A1AA] mb-1">Discord API</div>
+            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4">
+              <div className="text-sm text-[var(--muted)] mb-1">Discord API</div>
               <div
                 className="text-2xl font-bold"
                 style={{ color: getResponseTimeColor(metrics.discord.responseTime) }}
@@ -392,8 +399,8 @@ export default function ApiMetrics({
               </div>
             </div>
 
-            <div className="bg-[#151515] border border-[#2a2a2a] rounded-lg p-4">
-              <div className="text-sm text-[#A1A1AA] mb-1">Overall</div>
+            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4">
+              <div className="text-sm text-[var(--muted)] mb-1">Overall</div>
               <div
                 className="text-2xl font-bold"
                 style={{ color: getResponseTimeColor(metrics.overall.responseTime) }}

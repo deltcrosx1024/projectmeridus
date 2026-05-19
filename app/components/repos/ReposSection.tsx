@@ -143,7 +143,7 @@ export default function ReposSection() {
     return (
       <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <p className="text-[#A1A1AA]">Connect GitHub to see your repositories</p>
+          <p className="text-[var(--muted)]">Connect GitHub to see your repositories</p>
         </div>
       </section>
     );
@@ -183,14 +183,14 @@ export default function ReposSection() {
 
   const RepoCard = ({ repo, isPinned }: { repo: Repo; isPinned: boolean }) => (
     <div
-      className={`group relative ${getCardPadding()} bg-[#0a0a0a]/80 border ${isPinned ? 'border-yellow-500/50' : 'border-[#333333]'} rounded-lg hover:bg-[#1a1a1a]/80 transition-all hover:shadow-lg hover:shadow-blue-500/10 ${compactMode ? 'text-sm' : ''}`}
+      className={`group relative ${getCardPadding()} bg-[var(--card-bg)]/80 border ${isPinned ? 'border-yellow-500/50' : 'border-[var(--card-border)]'} rounded-lg hover:bg-[var(--card-border)]/80 transition-all hover:shadow-lg ${compactMode ? 'text-sm' : ''}`}
       onMouseEnter={() => setHoveredRepo(repo.id)}
       onMouseLeave={() => setHoveredRepo(null)}
     >
       {/* Pin indicator */}
       {isPinned && (
         <div className="absolute -top-2 -left-2 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-          <svg className="w-3 h-3 text-[#333333]" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-3 h-3 text-[var(--card-border)]" fill="currentColor" viewBox="0 0 20 20">
             <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
           </svg>
         </div>
@@ -201,7 +201,7 @@ export default function ReposSection() {
         <div className="absolute top-2 right-2 flex gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); togglePin(repo.id); }}
-            className={`p-1.5 rounded ${isPinned ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-[#1a1a1a] hover:bg-[#444444] text-white hover:text-white'}`}
+            className={`p-1.5 rounded ${isPinned ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-[var(--card-border)] hover:bg-[var(--card-border)]/80 text-[var(--foreground)] hover:text-[var(--foreground)]'}`}
             title={isPinned ? 'Unpin repository' : 'Pin repository'}
           >
             <svg className="w-4 h-4" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
@@ -210,7 +210,7 @@ export default function ReposSection() {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); copyToClipboard(repo.url, 'URL'); }}
-            className="p-1.5 bg-[#1a1a1a] hover:bg-[#444444] rounded text-white hover:text-white"
+            className="p-1.5 bg-[var(--card-border)] hover:bg-[var(--card-border)]/80 rounded text-[var(--foreground)] hover:text-[var(--foreground)]"
             title="Copy URL"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +219,7 @@ export default function ReposSection() {
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); copyToClipboard(`git clone ${repo.url}.git`, 'Clone command'); }}
-            className="p-1.5 bg-[#1a1a1a] hover:bg-[#444444] rounded text-white hover:text-white"
+            className="p-1.5 bg-[var(--card-border)] hover:bg-[var(--card-border)]/80 rounded text-[var(--foreground)] hover:text-[var(--foreground)]"
             title="Copy clone command"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,7 +231,7 @@ export default function ReposSection() {
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="p-1.5 bg-[#1a1a1a] hover:bg-blue-600 rounded text-white hover:text-white"
+            className="p-1.5 bg-[var(--card-border)] hover:bg-blue-600 rounded text-[var(--foreground)] hover:text-white"
             title="Open in GitHub"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -242,22 +242,22 @@ export default function ReposSection() {
       )}
 
       <a href={repo.url} target="_blank" rel="noopener noreferrer">
-        <h3 
-          className={`font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors ${compactMode ? 'text-base' : 'text-lg'}`}
+          <h3 
+          className={`font-semibold text-[var(--foreground)] mb-2 group-hover:text-[var(--accent)] transition-colors ${compactMode ? 'text-base' : 'text-lg'}`}
           style={{ fontFamily: 'var(--font-aldrich)' }}
         >
           {repo.name}
         </h3>
-        <p className={`text-[#A1A1AA] mb-4 ${compactMode ? 'text-xs mb-2 line-clamp-2' : 'text-sm'}`} style={{ fontFamily: 'var(--font-archivo)' }}>
+        <p className={`text-[var(--muted)] mb-4 ${compactMode ? 'text-xs mb-2 line-clamp-2' : 'text-sm'}`} style={{ fontFamily: 'var(--font-archivo)' }}>
           {repo.description || 'No description'}
         </p>
       </a>
 
-      <div className={`flex items-center justify-between border-t border-[#333333] ${compactMode ? 'pt-2' : 'pt-4'}`}>
-        <div className={`flex items-center gap-4 text-[#A1A1AA] ${compactMode ? 'text-xs gap-2' : 'text-xs'}`}>
+      <div className={`flex items-center justify-between border-t border-[var(--card-border)] ${compactMode ? 'pt-2' : 'pt-4'}`}>
+          <div className={`flex items-center gap-4 text-[var(--muted)] ${compactMode ? 'text-xs gap-2' : 'text-xs'}`}>
           {repo.language && (
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)]"></span>
               {repo.language}
             </span>
           )}
@@ -274,7 +274,7 @@ export default function ReposSection() {
             {repo.forks}
           </span>
         </div>
-        <span className="text-xs text-[#666666]" title={new Date(repo.updated_at).toLocaleString()}>
+        <span className="text-xs text-[var(--muted)]" title={new Date(repo.updated_at).toLocaleString()}>
           {formatLastUpdated(repo.updated_at)}
         </span>
       </div>
@@ -282,7 +282,7 @@ export default function ReposSection() {
   );
 
   return (
-    <section className={`py-12 px-4 bg-black/50 ${compactMode ? 'py-6' : ''}`}>
+    <section className={`py-12 px-4 bg-[var(--background)]/50 ${compactMode ? 'py-6' : ''}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className={`mb-6 ${compactMode ? 'mb-4' : ''}`}>
@@ -294,7 +294,7 @@ export default function ReposSection() {
               >
                 Your Repositories
               </h2>
-              <p className="text-[#A1A1AA] text-sm">
+              <p className="text-[var(--muted)] text-sm">
                 {sortedAndFilteredRepos.length} of {githubUser.public_repos} repositories
                 {pinnedRepositories.length > 0 && ` • ${pinnedRepositories.length} pinned`}
                 {searchQuery && ' (filtered)'}
@@ -306,7 +306,7 @@ export default function ReposSection() {
           <div className="mt-4 flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="relative flex-1">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1AA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -315,12 +315,12 @@ export default function ReposSection() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search repositories... (Press / to focus)"
-                className="w-full pl-10 pr-4 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white placeholder-[#666666] focus:outline-none focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none focus:border-[var(--accent)]"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A1A1AA] hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)]"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -333,7 +333,7 @@ export default function ReposSection() {
             <select
               value={selectedLanguage}
               onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
             >
               <option value="all">All Languages</option>
               {languages.map(lang => (
@@ -346,7 +346,7 @@ export default function ReposSection() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                className="px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
               >
                 <option value="updated">Updated</option>
                 <option value="stars">Stars</option>
@@ -355,7 +355,7 @@ export default function ReposSection() {
               </select>
               <button
                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                className="px-3 py-2 bg-[#0a0a0a] border border-[#333333] rounded-lg text-white hover:bg-[#1a1a1a]"
+                className="px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg text-[var(--foreground)] hover:bg-[var(--card-border)]/80"
                 title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
@@ -383,7 +383,7 @@ export default function ReposSection() {
 
         {/* All Repositories */}
         {pinnedRepositories.length > 0 && !searchQuery && selectedLanguage === 'all' && (
-          <h3 className="text-sm font-semibold text-[#A1A1AA] mb-3">
+          <h3 className="text-sm font-semibold text-[var(--muted)] mb-3">
             All Repositories
           </h3>
         )}
@@ -397,10 +397,10 @@ export default function ReposSection() {
 
         {sortedAndFilteredRepos.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-[#A1A1AA]">No repositories match your search</p>
+            <p className="text-[var(--muted)]">No repositories match your search</p>
             <button
               onClick={() => { setSearchQuery(''); setSelectedLanguage('all'); }}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+              className="mt-4 px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg"
             >
               Clear Filters
             </button>

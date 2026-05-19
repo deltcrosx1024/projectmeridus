@@ -9,40 +9,37 @@
 'use client';
 import { handleGitHubLogin, handleDiscordLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
-import { useTheme } from '@/app/contexts/ThemeContext'; // theme context import
 import { useState } from 'react';
 import Link from 'next/link';
 
 export default function HeroSection() {
   const { githubUser, discordUser, isLoading } = useAuth();
-  const { resolvedTheme } = useTheme(); // resolvedTheme drives hero text theme
-  const isDark = resolvedTheme === 'dark'; // theme boolean for hero text classes
 
   return (
     <div className="mb-16">
       {/* ===== HERO TITLE ===== */}
-      <h1 className={`text-5xl md:text-6xl font-bold mb-4 leading-tight ${isDark ? 'text-white' : 'text-black'}`}>
+      <h1 className="text-5xl md:text-6xl font-bold mb-4 leading-tight text-[var(--foreground)]">
         Github Monitoring Centre
-      </h1> {/* hero title color switches based on theme */}
+      </h1>
 
       {/* ===== HERO DESCRIPTION ===== */}
-      <p className={`text-xl mb-8 max-w-2xl leading-relaxed ${isDark ? 'text-[#A1A1AA]' : 'text-gray-600'}`}>
+      <p className="text-xl mb-8 max-w-2xl leading-relaxed text-[var(--muted)]">
         Manage, monitor, and collaborate on your GitHub repositories all in one place. Connect with GitHub and streamline your development workflow.
-      </p> {/* hero description text color is theme-aware */}
+      </p>
 
       {/* ===== HERO CTA BUTTONS ===== */}
       <div className="flex gap-4">
         {!isLoading && !githubUser && (
           <button 
             onClick={() => handleGitHubLogin(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '')}
-            className="px-8 py-3 bg-white text-black font-semibold rounded-md hover:bg-[#e5e5e5] transition-all"
+            className="px-8 py-3 bg-[var(--accent)] text-white font-semibold rounded-md hover:bg-[var(--accent-hover)] transition-all"
           >
             Connect GitHub
           </button>
         )}
         {!isLoading && githubUser && (
           <div className="flex items-center gap-4">
-            <span className="text-[#22c55e] font-semibold text-sm">
+            <span className="text-[var(--accent)] font-semibold text-sm">
               ✓ Connected as {githubUser.login}
             </span>
           </div>

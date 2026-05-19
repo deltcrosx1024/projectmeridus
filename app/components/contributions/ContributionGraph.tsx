@@ -32,7 +32,7 @@ function generateContributionData(): ContributionData[] {
 }
 
 function getColorForCount(count: number): string {
-  if (count === 0) return 'bg-[#1a1a1a]';
+  if (count === 0) return 'bg-[var(--card-border)]';
   if (count < 3) return 'bg-green-900/50';
   if (count < 6) return 'bg-green-700/50';
   if (count < 9) return 'bg-green-500/50';
@@ -115,27 +115,27 @@ export default function ContributionGraph() {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Contribution Graph */}
-          <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-6">
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-bold text-white ${compactMode ? 'text-lg' : 'text-xl'}`}>
+              <h3 className={`font-bold text-[var(--foreground)] ${compactMode ? 'text-lg' : 'text-xl'}`}>
                 Contribution Graph
               </h3>
-              <span className="text-sm text-[#A1A1AA]">{totalContributions} contributions in the last year</span>
+              <span className="text-sm text-[var(--muted)]">{totalContributions} contributions in the last year</span>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-3 bg-[#1a1a1a] rounded-lg">
+              <div className="text-center p-3 bg-[var(--card-border)] rounded-lg">
                 <p className="text-2xl font-bold text-green-400">{totalContributions}</p>
-                <p className="text-xs text-[#A1A1AA]">Contributions</p>
+                <p className="text-xs text-[var(--muted)]">Contributions</p>
               </div>
-              <div className="text-center p-3 bg-[#1a1a1a] rounded-lg">
+              <div className="text-center p-3 bg-[var(--card-border)] rounded-lg">
                 <p className="text-2xl font-bold text-blue-400">{activeDays}</p>
-                <p className="text-xs text-[#A1A1AA]">Active Days</p>
+                <p className="text-xs text-[var(--muted)]">Active Days</p>
               </div>
-              <div className="text-center p-3 bg-[#1a1a1a] rounded-lg">
+              <div className="text-center p-3 bg-[var(--card-border)] rounded-lg">
                 <p className="text-2xl font-bold text-purple-400">{longestStreak}</p>
-                <p className="text-xs text-[#A1A1AA]">Longest Streak</p>
+                <p className="text-xs text-[var(--muted)]">Longest Streak</p>
               </div>
             </div>
 
@@ -157,10 +157,10 @@ export default function ContributionGraph() {
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-2 mt-4 text-xs text-[#A1A1AA]">
+            <div className="flex items-center gap-2 mt-4 text-xs text-[var(--muted)]">
               <span>Less</span>
               <div className="flex gap-1">
-                <div className="w-3 h-3 rounded-sm bg-[#1a1a1a]" />
+                <div className="w-3 h-3 rounded-sm bg-[var(--card-border)]" />
                 <div className="w-3 h-3 rounded-sm bg-green-900/50" />
                 <div className="w-3 h-3 rounded-sm bg-green-700/50" />
                 <div className="w-3 h-3 rounded-sm bg-green-500/50" />
@@ -171,8 +171,8 @@ export default function ContributionGraph() {
           </div>
 
           {/* Language Breakdown */}
-          <div className="bg-[#0a0a0a] border border-[#333333] rounded-lg p-6">
-            <h3 className={`font-bold text-white mb-4 ${compactMode ? 'text-lg' : 'text-xl'}`}>
+          <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-6">
+            <h3 className={`font-bold text-[var(--foreground)] mb-4 ${compactMode ? 'text-lg' : 'text-xl'}`}>
               Language Breakdown
             </h3>
 
@@ -214,9 +214,9 @@ export default function ContributionGraph() {
                         className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: lang.color }}
                       />
-                      <span className="text-sm text-white">{lang.name}</span>
+                      <span className="text-sm text-[var(--foreground)]">{lang.name}</span>
                     </div>
-                    <span className="text-sm text-[#A1A1AA]">{lang.percentage}%</span>
+                    <span className="text-sm text-[var(--muted)]">{lang.percentage}%</span>
                   </div>
                 ))}
               </div>
@@ -227,10 +227,10 @@ export default function ContributionGraph() {
               {languages.map((lang) => (
                 <div key={lang.name}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-white">{lang.name}</span>
-                    <span className="text-xs text-[#A1A1AA]">{lang.percentage}%</span>
+                    <span className="text-sm text-[var(--foreground)]">{lang.name}</span>
+                    <span className="text-xs text-[var(--muted)]">{lang.percentage}%</span>
                   </div>
-                  <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div className="h-2 bg-[var(--card-border)] rounded-full overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${lang.percentage}%`, backgroundColor: lang.color }}
