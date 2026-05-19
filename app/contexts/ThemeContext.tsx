@@ -33,7 +33,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setResolvedTheme(newTheme); // update theme state used by components
     
     // Set data-theme attribute instead of adding/removing classes
-    root.setAttribute('data-theme', newTheme); // root attribute used for global theme styling
+    root.setAttribute('data-theme', newTheme); // NOSONAR - This allows CSS to target [data-theme="dark"] and [data-theme="light"] for theme-specific styles without needing JS to toggle classes.
   }, [theme]);
 
   // Listen for system theme changes

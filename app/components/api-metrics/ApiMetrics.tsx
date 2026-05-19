@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Highcharts from 'highcharts';
 import { useApiMetrics, formatResponseTime, getResponseTimeColor } from '@/app/lib/useApiMetrics';
+import { useTheme } from '@/app/contexts/ThemeContext';
 
 if (typeof document !== 'undefined') {
   const rootStyles = getComputedStyle(document.documentElement);
@@ -98,6 +99,9 @@ export default function ApiMetrics({
   defaultCollapsed = false,
   alwaysExpanded = false,
 }: Readonly<ApiMetricsProps>) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+  
   const { metrics, isLoading, refetch } = useApiMetrics();
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
@@ -153,9 +157,9 @@ export default function ApiMetrics({
         },
         type: 'line',
         height: 300,
-        backgroundColor: '#0f0f0f',
-        plotBackgroundColor: '#0f0f0f',
-        plotBorderColor: '#222222',
+        backgroundColor: isDark ? '#0f0f0f' : '#cccccc',
+        plotBackgroundColor: isDark ? '#0f0f0f' : '#f9f9f9',
+        plotBorderColor: isDark ? '#222222' : '#cccccc',
         plotBorderWidth: 1,
         style: {
           fontFamily: 'var(--font-sf-pro)',
@@ -169,11 +173,11 @@ export default function ApiMetrics({
       },
       xAxis: {
         categories: history.github.map((_, i) => `${i + 1}`),
-        lineColor: '#333333',
-        tickColor: '#333333',
+        lineColor: isDark ? '#333333' : '#cccccc',
+        tickColor: isDark ? '#333333' : '#cccccc',
         labels: {
           style: {
-            color: '#333333',
+            color: isDark ? '#e4e4e7' : '#000000',
             fontSize: '11px',
           },
         },
@@ -183,23 +187,23 @@ export default function ApiMetrics({
         title: {
           text: 'Response Time (ms)',
           style: {
-            color: '#333333',
+            color: isDark ? '#e4e4e7' : '#000000',
           },
         },
         labels: {
           style: {
-            color: '#333333',
+            color: isDark ? '#e4e4e7' : '#000000',
             fontSize: '11px',
           },
         },
-        gridLineColor: '#222222',
+        gridLineColor: isDark ? '#222222' : '#cccccc',
       },
       legend: {
-        backgroundColor: '#0f0f0f',
-        borderColor: '#333333',
+        backgroundColor: isDark ? '#0f0f0f' : '#f9f9f9',
+        borderColor: isDark ? '#333333' : '#cccccc',
         borderWidth: 1,
         itemStyle: {
-          color: '#e4e4e7',
+          color: isDark ? '#e4e4e7' : '#000000',
           fontWeight: '500',
         },
         itemHoverStyle: {
@@ -211,10 +215,10 @@ export default function ApiMetrics({
       },
       tooltip: {
         shared: true,
-        backgroundColor: '#1a1a1a',
-        borderColor: '#333333',
+        backgroundColor: isDark ? '#1a1a1a' : '#f9f9f9',
+        borderColor: isDark ? '#333333' : '#cccccc',
         style: {
-          color: '#ffffff',
+          color: isDark ? '#ffffff' : '#000000',
         },
         valueSuffix: ' ms',
       },
