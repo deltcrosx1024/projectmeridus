@@ -13,27 +13,29 @@ if (typeof document !== 'undefined') {
   const chartTooltip = rootStyles.getPropertyValue('--card-border').trim() || '#1a1a1a';
 
   const style = document.createElement('style');
+  // Theme background overrides for Highcharts elements using CSS variables
   style.innerHTML = `
-    .highcharts-background { fill: ${chartBackground} !important; }
-    .highcharts-plot-background { fill: ${chartBackground} !important; }
-    .highcharts-root { background-color: ${chartBackground} !important; }
-    .highcharts-container { background-color: ${chartBackground} !important; }
-    .highcharts-legend-box { fill: ${chartBackground} !important; stroke: ${chartBorder} !important; }
-    .highcharts-axis-labels text { fill: ${chartForeground} !important; }
-    .highcharts-axis-title text { fill: ${chartForeground} !important; }
-    .highcharts-grid-line { stroke: ${chartBorder} !important; }
-    .highcharts-tick { stroke: ${chartBorder} !important; }
-    .highcharts-axis-line { stroke: ${chartBorder} !important; }
-    .highcharts-legend-item text { fill: ${chartForeground} !important; }
-    .highcharts-tooltip-box { fill: ${chartTooltip} !important; stroke: ${chartBorder} !important; }
+    .highcharts-background { fill: var(--card-bg, #0f0f0f) !important; }
+    .highcharts-plot-background { fill: var(--card-bg, #0f0f0f) !important; }
+    .highcharts-root { background-color: var(--card-bg, #0f0f0f) !important; }
+    .highcharts-container { background-color: var(--card-bg, #0f0f0f) !important; }
+    .highcharts-legend-box { fill: var(--card-bg, #0f0f0f) !important; stroke: var(--card-border, #333333) !important; }
+    .highcharts-axis-labels text { fill: var(--foreground, #e4e4e7) !important; }
+    .highcharts-axis-title text { fill: var(--foreground, #e4e4e7) !important; }
+    .highcharts-grid-line { stroke: var(--card-border, #333333) !important; }
+    .highcharts-tick { stroke: var(--card-border, #333333) !important; }
+    .highcharts-axis-line { stroke: var(--card-border, #333333) !important; }
+    .highcharts-legend-item text { fill: var(--foreground, #e4e4e7) !important; }
+    .highcharts-tooltip-box { fill: var(--card-border, #1a1a1a) !important; stroke: var(--card-border, #333333) !important; }
   `;
   document.head.appendChild(style);
   
   Highcharts.setOptions({
     chart: {
-      backgroundColor: chartBackground,
-      plotBackgroundColor: chartBackground,
-      plotBorderColor: chartBorder,
+      // global chart background definitions
+      backgroundColor: 'var(--card-bg)',
+      plotBackgroundColor: 'var(--card-bg)',
+      plotBorderColor: 'var(--card-border)',
     },
     colors: ['#22c55e', '#0070F3', '#5865F2', '#f59e0b'],
     title: { style: { color: chartForeground } },
@@ -72,27 +74,6 @@ interface MetricHistory {
 interface ApiMetricsProps {
   defaultCollapsed?: boolean;
   alwaysExpanded?: boolean;
-}
-
-function forceDarkChartBackground(chart: Highcharts.Chart) {
-  const selectors = [
-    '.highcharts-background',
-    '.highcharts-plot-background',
-  ];
-
-  selectors.forEach((sel) => {
-    const el = chart.container.querySelector(sel);
-    if (el instanceof SVGElement) {
-      el.style.setProperty('fill', '#0f0f0f', 'important');
-    }
-  });
-
-  // Force all text elements to the right color
-  chart.container.querySelectorAll('text').forEach((el) => {
-    if (el instanceof SVGElement) {
-      el.style.setProperty('fill', '#e4e4e7', 'important');
-    }
-  });
 }
 
 export default function ApiMetrics({
@@ -147,19 +128,11 @@ export default function ApiMetrics({
       
       chart: {
         styledMode: false,
-        events: {
-          load: function (this: Highcharts.Chart) {
-            forceDarkChartBackground(this);
-          },
-          redraw: function (this: Highcharts.Chart) {
-            forceDarkChartBackground(this);
-          },
-        },
         type: 'line',
         height: 300,
-        backgroundColor: isDark ? '#0f0f0f' : '#cccccc',
-        plotBackgroundColor: isDark ? '#0f0f0f' : '#f9f9f9',
-        plotBorderColor: isDark ? '#222222' : '#cccccc',
+        backgroundColor: 'var(--card-bg)',
+        plotBackgroundColor: 'var(--card-bg)',
+        plotBorderColor: 'var(--card-border)',
         plotBorderWidth: 1,
         style: {
           fontFamily: 'var(--font-sf-pro)',
@@ -279,7 +252,7 @@ export default function ApiMetrics({
         },
       ],
     };
-  }, [history]);
+  }, [history, resolvedTheme]);
 
   useEffect(() => {
     if (isCollapsed && !alwaysExpanded) return;
@@ -289,7 +262,6 @@ export default function ApiMetrics({
     if (chartInstanceRef.current) {
       chartInstanceRef.current.update(chartOptions, true, true);
       chartInstanceRef.current.reflow();
-      forceDarkChartBackground(chartInstanceRef.current);
     } else {
       chartInstanceRef.current = Highcharts.chart(chartRef.current, chartOptions);
     }
