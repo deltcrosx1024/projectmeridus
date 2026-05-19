@@ -170,7 +170,7 @@ export default function CTASection() {
       {/* ===== CTA BUTTON ===== */}
       <button
         onClick={ctaContent.buttonAction}
-        className="px-10 py-3 bg-white text-black font-semibold rounded-md hover:bg-[#e5e5e5] transition-all"
+        className="px-10 py-3 bg-[var(--accent)] text-white font-semibold rounded-md hover:bg-[var(--accent-hover)] transition-all"
       >
         {ctaContent.buttonText}
       </button>

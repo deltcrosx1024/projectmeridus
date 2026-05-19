@@ -13,15 +13,12 @@
 import { NAV_ITEMS } from '@/app/constants/data';
 import { handleGitHubLogin, handleDiscordLogin, handleVercelLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
-import { useTheme } from '@/app/contexts/ThemeContext'; // theme context import
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NotificationCenter from '@/app/components/notifications/NotificationCenter';
 
 export default function Header() {
   const { githubUser, discordUser, vercelUser, logout, isLoading, refreshAuth } = useAuth();
-  const { resolvedTheme } = useTheme(); // resolvedTheme drives dark/light mode
-  const isDark = resolvedTheme === 'dark'; // boolean used for conditional theme classes
   const [showGithubMenu, setShowGithubMenu] = useState(false);
   const [showDiscordMenu, setShowDiscordMenu] = useState(false);
   const [showVercelMenu, setShowVercelMenu] = useState(false);
@@ -32,7 +29,7 @@ export default function Header() {
   }, [refreshAuth]);
 
   return (
-    <header className={`border-b backdrop-blur-sm sticky top-0 z-50 ${isDark ? 'border-[#333333] bg-black/80' : 'border-gray-200 bg-white/80'}`}> {/* header background and border switch on theme */}
+    <header className="border-b border-[var(--card-border)] backdrop-blur-sm sticky top-0 z-50 bg-[var(--background)]/80"> {/* header background and border now use CSS variables */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* ===== LOGO SECTION ===== */}
@@ -42,7 +39,7 @@ export default function Header() {
               alt="Meridus Logo"
               className="w-8 h-8"
             />
-            <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`} style={{ fontFamily: 'var(--font-meridus-display) !important', fontSize: '1.275rem' }}>MERIDUS</span> {/* logo text color follows theme */}
+            <span className="font-bold text-[var(--foreground)]" style={{ fontFamily: 'var(--font-meridus-display) !important', fontSize: '1.275rem' }}>MERIDUS</span>
           </a>
 
           {/* ===== DESKTOP NAVIGATION ===== */}
@@ -53,8 +50,8 @@ export default function Header() {
                 <Link
                   key={item.label}
                   href={href}
-                  className={`font-medium transition-colors text-sm ${isDark ? 'text-[#A1A1AA] hover:text-white' : 'text-gray-600 hover:text-black'}`}
-                > {/* nav item text color follows theme */}
+                  className="font-medium transition-colors text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+                >
                   {item.label}
                 </Link>
               );
@@ -74,7 +71,7 @@ export default function Header() {
                 <>
                   <button
                     onClick={() => setShowGithubMenu(!showGithubMenu)}
-                    className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] border border-[#333333] hover:border-[#555555] text-white rounded-md transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent)]/40 text-[var(--foreground)] rounded-md transition-colors"
                   >
                     <img 
                       src={githubUser.avatar_url}
@@ -84,16 +81,16 @@ export default function Header() {
                     <span className="text-sm">{githubUser.login}</span>
                   </button>
                   {showGithubMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-[#333333] rounded-lg py-2 z-10">
-                      <div className="px-4 py-2 border-b border-[#333333]">
-                        <p className="text-sm font-semibold text-white">{githubUser.name}</p>
-                        <p className="text-xs text-[#A1A1AA]">{githubUser.bio}</p>
+                    <div className="absolute right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg py-2 z-10">
+                      <div className="px-4 py-2 border-b border-[var(--card-border)]">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{githubUser.name}</p>
+                        <p className="text-xs text-[var(--muted)]">{githubUser.bio}</p>
                       </div>
                       <a 
                         href={`https://github.com/${githubUser.login}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block px-4 py-2 text-sm text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-white"
+                        className="block px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-[var(--foreground)]"
                       >
                         View Profile
                       </a>
@@ -102,7 +99,7 @@ export default function Header() {
                           logout('github');
                           setShowGithubMenu(false);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-red-400"
+                        className="w-full text-left px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-red-400"
                       >
                         Logout
                       </button>
@@ -112,7 +109,7 @@ export default function Header() {
               ) : (
                 <button
                   onClick={() => handleGitHubLogin(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '')}
-                  className="px-4 py-2 bg-[#0a0a0a] border border-[#333333] hover:border-[#555555] text-white rounded-md transition-colors flex items-center gap-2 text-sm"
+                  className="px-4 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent)]/40 text-[var(--foreground)] rounded-md transition-colors flex items-center gap-2 text-sm"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.545 2.91 1.187.092-.923.35-1.545.636-1.9-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.025A9.578 9.578 0 0110 4.817c.85.004 1.705.114 2.504.336 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.48C17.137 18.195 20 14.44 20 10.017 20 4.484 15.522 0 10 0z" clipRule="evenodd" />
@@ -140,16 +137,16 @@ export default function Header() {
                     <span className="text-sm">{discordUser.username}</span>
                   </button>
                   {showDiscordMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-[#333333] rounded-lg py-2 z-10">
-                      <div className="px-4 py-2 border-b border-[#333333]">
-                        <p className="text-sm font-semibold text-white">{discordUser.username}</p>
+                    <div className="absolute right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg py-2 z-10">
+                      <div className="px-4 py-2 border-b border-[var(--card-border)]">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{discordUser.username}</p>
                       </div>
                       <button
                         onClick={() => {
                           logout('discord');
                           setShowDiscordMenu(false);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-red-400"
+                        className="w-full text-left px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-red-400"
                       >
                         Logout
                       </button>
@@ -170,7 +167,7 @@ export default function Header() {
             </div>
 
             {/* Vertical Separator */}
-            <div className="w-px h-6 bg-[#333333] mx-1" title="Optional - Connect for Vercel deployments"></div>
+            <div className="w-px h-6 bg-[var(--card-border)] mx-1" title="Optional - Connect for Vercel deployments"></div>
 
             {/* Vercel (Optional) */}
             <div className="relative">
@@ -178,7 +175,7 @@ export default function Header() {
                 <>
                   <button
                     onClick={() => setShowVercelMenu(!showVercelMenu)}
-                    className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] border border-[#333333] hover:border-[#555555] text-white rounded-md transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent)]/40 text-[var(--foreground)] rounded-md transition-colors"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 76 76" fill="currentColor">
                       <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
@@ -186,16 +183,16 @@ export default function Header() {
                     <span className="text-sm">{vercelUser.username}</span>
                   </button>
                   {showVercelMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-[#0a0a0a] border border-[#333333] rounded-lg py-2 z-10">
-                      <div className="px-4 py-2 border-b border-[#333333]">
-                        <p className="text-sm font-semibold text-white">{vercelUser.username}</p>
-                        <p className="text-xs text-[#A1A1AA]">{vercelUser.email}</p>
+                    <div className="absolute right-0 mt-2 w-48 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg py-2 z-10">
+                      <div className="px-4 py-2 border-b border-[var(--card-border)]">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{vercelUser.username}</p>
+                        <p className="text-xs text-[var(--muted)]">{vercelUser.email}</p>
                       </div>
                       <a 
                         href="https://vercel.com/dashboard"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block px-4 py-2 text-sm text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-white"
+                        className="block px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-[var(--foreground)]"
                       >
                         Dashboard
                       </a>
@@ -204,7 +201,7 @@ export default function Header() {
                           logout('vercel');
                           setShowVercelMenu(false);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-red-400"
+                        className="w-full text-left px-4 py-2 text-sm text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-red-400"
                       >
                         Logout
                       </button>
@@ -214,7 +211,7 @@ export default function Header() {
               ) : (
                 <button
                   onClick={() => handleVercelLogin(process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID || '')}
-                  className="px-4 py-2 bg-[#0a0a0a] border border-[#333333] hover:border-[#555555] text-white rounded-md transition-colors flex items-center gap-2 text-sm"
+                    className="px-4 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--accent)]/40 text-[var(--foreground)] rounded-md transition-colors flex items-center gap-2 text-sm"
                   title="Optional - Link Vercel for deployment status"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 76 76" fill="currentColor">
@@ -228,7 +225,7 @@ export default function Header() {
 
           {/* ===== MOBILE HAMBURGER BUTTON ===== */}
           <button 
-            className="md:hidden p-2 text-[#A1A1AA] hover:text-white"
+            className="md:hidden p-2 text-[var(--muted)] hover:text-[var(--foreground)]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -245,7 +242,7 @@ export default function Header() {
 
         {/* ===== MOBILE MENU ===== */}
         {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pb-4 border-t border-[#333333] pt-4">
+          <div className="md:hidden mt-4 pb-4 border-t border-[var(--card-border)] pt-4">
             <nav className="flex flex-col gap-3">
               {NAV_ITEMS.map((item) => {
                 const href = item.label === 'Docs' ? '/docs' : `/${item.label.toLowerCase()}`;
@@ -253,7 +250,7 @@ export default function Header() {
                   <Link
                     key={item.label}
                     href={href}
-                    className="text-slate-300 hover:text-white font-aldrich transition-colors py-2"
+                    className="text-[var(--muted)] hover:text-[var(--foreground)] font-aldrich transition-colors py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {item.label}
@@ -265,13 +262,13 @@ export default function Header() {
             <div className="flex flex-col gap-3 mt-4">
               {/* GitHub Mobile */}
               {githubUser ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] rounded-lg">
+                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] rounded-lg">
                   <img 
                     src={githubUser.avatar_url}
                     alt={githubUser.id.toString()}
                     className="w-6 h-6 rounded-full"
                   />
-                  <span className="text-sm text-white">{githubUser.login}</span>
+                  <span className="text-sm text-[var(--foreground)]">{githubUser.login}</span>
                   <button
                     onClick={() => {
                       logout('github');
@@ -285,7 +282,7 @@ export default function Header() {
               ) : (
                 <button
                   onClick={() => handleGitHubLogin(process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID || '')}
-                  className="px-4 py-2 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/80 text-[var(--foreground)] rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.545 2.91 1.187.092-.923.35-1.545.636-1.9-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.025A9.578 9.578 0 0110 4.817c.85.004 1.705.114 2.504.336 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.48C17.137 18.195 20 14.44 20 10.017 20 4.484 15.522 0 10 0z" clipRule="evenodd" />
@@ -329,11 +326,11 @@ export default function Header() {
 
               {/* Vercel Mobile (Optional) */}
               {vercelUser ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0a] rounded-lg">
+                <div className="flex items-center gap-2 px-3 py-2 bg-[var(--card-bg)] rounded-lg">
                   <svg className="w-6 h-6" viewBox="0 0 76 76" fill="currentColor">
                     <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
                   </svg>
-                  <span className="text-sm text-white">{vercelUser.username}</span>
+                  <span className="text-sm text-[var(--foreground)]">{vercelUser.username}</span>
                   <button
                     onClick={() => {
                       logout('vercel');
@@ -347,12 +344,12 @@ export default function Header() {
               ) : (
                 <button
                   onClick={() => handleVercelLogin(process.env.NEXT_PUBLIC_VERCEL_CLIENT_ID || '')}
-                  className="px-4 py-2 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/80 text-[var(--foreground)] rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 76 76" fill="currentColor">
                     <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
                   </svg>
-                  Vercel <span className="text-xs text-[#A1A1AA]">(Optional)</span>
+                  Vercel <span className="text-xs text-[var(--muted)]">(Optional)</span>
                 </button>
               )}
             </div>

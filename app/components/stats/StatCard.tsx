@@ -12,16 +12,12 @@
 'use client';
 
 import { StatCard } from '@/app/types';
-import { useTheme } from '@/app/contexts/ThemeContext'; // theme context import
 
 interface StatCardProps {
   stat: StatCard;
 }
 
 export default function StatCardComponent({ stat }: StatCardProps) {
-  const { resolvedTheme } = useTheme(); // resolvedTheme drives card theme
-  const isDark = resolvedTheme === 'dark'; // bool for theme-specific classes
-  
   const colorMap = {
     green: 'text-[#22c55e]',
     orange: 'text-[#f59e0b]',
@@ -30,12 +26,12 @@ export default function StatCardComponent({ stat }: StatCardProps) {
   };
 
   return (
-    <div className={`border rounded-lg p-6 hover:transition-all ${isDark ? 'bg-[#0a0a0a] border-[#333333] hover:border-[#555555]' : 'bg-white border-gray-300 hover:border-gray-400'}`}> {/* card surface switches on theme */}
+    <div className="border rounded-lg p-6 bg-[var(--card-bg)] border-[var(--card-border)] hover:border-[var(--accent)]/20 transition-all"> {/* card surface now uses theme variables */}
       {/* ===== STAT LABEL ===== */}
-      <div className={`text-sm font-semibold mb-2 ${isDark ? 'text-[#A1A1AA]' : 'text-gray-600'}`}>{stat.label}</div> {/* label text color is theme-aware */}
+      <div className="text-sm font-semibold mb-2 text-[var(--muted)]">{stat.label}</div>
 
       {/* ===== STAT VALUE ===== */}
-      <div className={`text-4xl font-bold mb-2 ${isDark ? 'text-white' : 'text-black'}`}>{stat.value}</div> {/* value text color is theme-aware */}
+      <div className="text-4xl font-bold mb-2 text-[var(--foreground)]">{stat.value}</div>
 
       {/* ===== STAT CHANGE ===== */}
       <div className={`text-sm ${colorMap[stat.changeColor]}`}>{stat.change}</div>
