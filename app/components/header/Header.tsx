@@ -13,15 +13,15 @@
 import { NAV_ITEMS } from '@/app/constants/data';
 import { handleGitHubLogin, handleDiscordLogin, handleVercelLogin } from '@/app/lib/oauth';
 import { useAuth } from '@/app/contexts/AuthContext';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { useTheme } from '@/app/contexts/ThemeContext'; // theme context import
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NotificationCenter from '@/app/components/notifications/NotificationCenter';
 
 export default function Header() {
   const { githubUser, discordUser, vercelUser, logout, isLoading, refreshAuth } = useAuth();
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  const { resolvedTheme } = useTheme(); // resolvedTheme drives dark/light mode
+  const isDark = resolvedTheme === 'dark'; // boolean used for conditional theme classes
   const [showGithubMenu, setShowGithubMenu] = useState(false);
   const [showDiscordMenu, setShowDiscordMenu] = useState(false);
   const [showVercelMenu, setShowVercelMenu] = useState(false);
@@ -32,7 +32,7 @@ export default function Header() {
   }, [refreshAuth]);
 
   return (
-    <header className={`border-b backdrop-blur-sm sticky top-0 z-50 ${isDark ? 'border-[#333333] bg-black/80' : 'border-gray-200 bg-white/80'}`}>
+    <header className={`border-b backdrop-blur-sm sticky top-0 z-50 ${isDark ? 'border-[#333333] bg-black/80' : 'border-gray-200 bg-white/80'}`}> {/* header background and border switch on theme */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* ===== LOGO SECTION ===== */}
@@ -42,7 +42,7 @@ export default function Header() {
               alt="Meridus Logo"
               className="w-8 h-8"
             />
-            <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`} style={{ fontFamily: 'var(--font-meridus-display) !important', fontSize: '1.275rem' }}>MERIDUS</span>
+            <span className={`font-bold ${isDark ? 'text-white' : 'text-black'}`} style={{ fontFamily: 'var(--font-meridus-display) !important', fontSize: '1.275rem' }}>MERIDUS</span> {/* logo text color follows theme */}
           </a>
 
           {/* ===== DESKTOP NAVIGATION ===== */}
@@ -54,7 +54,7 @@ export default function Header() {
                   key={item.label}
                   href={href}
                   className={`font-medium transition-colors text-sm ${isDark ? 'text-[#A1A1AA] hover:text-white' : 'text-gray-600 hover:text-black'}`}
-                >
+                > {/* nav item text color follows theme */}
                   {item.label}
                 </Link>
               );

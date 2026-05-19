@@ -141,15 +141,15 @@ export default function ActivityFeed() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h2 
-              className={`font-bold ${compactMode ? 'text-xl' : 'text-2xl'}`} 
+              className={`font-bold ${compactMode ? 'text-xl' : 'text-2xl'} text-[var(--foreground)]`} 
               style={{ fontFamily: 'var(--font-aldrich)' }}
             >
               Activity Feed
             </h2>
-            <p className="text-[#A1A1AA] text-sm mt-1">
+            <p className="text-[var(--muted)] text-sm mt-1">
               Recent activity across your repositories
               {lastUpdated && (
-                <span className="ml-2 text-xs text-[#666666]">
+                <span className="ml-2 text-xs text-[var(--muted)]">
                   • Updated {formatTimeAgo(lastUpdated.toISOString())}
                 </span>
               )}
@@ -160,7 +160,7 @@ export default function ActivityFeed() {
           <button
             onClick={fetchActivities}
             disabled={isLoading}
-            className="px-3 py-1.5 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors text-sm flex items-center gap-2"
+            className="px-3 py-1.5 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/10 text-[var(--foreground)] rounded-lg transition-colors text-sm flex items-center gap-2"
           >
             <svg 
               className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} 
@@ -183,7 +183,7 @@ export default function ActivityFeed() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
                 filter === type 
                   ? 'bg-blue-600 text-white' 
-                  : 'bg-[#0a0a0a] text-[#A1A1AA] hover:bg-[#1a1a1a] hover:text-white'
+                  : 'bg-[var(--card-bg)] text-[var(--muted)] hover:bg-[var(--card-border)]/20 hover:text-[var(--foreground)]'
               }`}
             >
               {type === 'all' ? 'All' : type}
@@ -191,7 +191,8 @@ export default function ActivityFeed() {
           ))}
         </div>
 
-        {/* Error state */}
+         {/* Error message */}
+
         {error && (
           <div className="mb-6 p-4 bg-red-900/20 border border-red-900/50 rounded-lg">
             <p className="text-red-400 text-sm">{error}</p>
@@ -202,7 +203,7 @@ export default function ActivityFeed() {
         {isLoading && activities.length === 0 && (
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-[#666666]">Loading activities...</p>
+            <p className="text-[var(--muted)]">Loading activities...</p>
           </div>
         )}
 
@@ -210,7 +211,7 @@ export default function ActivityFeed() {
         {!isLoading && !error && (
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[#1a1a1a] hidden sm:block" />
+            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[var(--card-border)] hidden sm:block" />
 
             <div className="space-y-4">
               {filteredActivities.map((activity) => (
@@ -224,7 +225,7 @@ export default function ActivityFeed() {
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 bg-[#0a0a0a]/50 border border-[#333333] rounded-lg p-4 hover:bg-[#0a0a0a] transition-colors">
+                  <div className="flex-1 min-w-0 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg p-4 hover:bg-[var(--card-border)]/10 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <img 
@@ -232,26 +233,26 @@ export default function ActivityFeed() {
                           alt={activity.actor.login}
                           className="w-6 h-6 rounded-full"
                         />
-                        <span className="font-medium text-white">{activity.actor.login}</span>
-                        <span className="text-[#666666]">in</span>
+                        <span className="font-medium text-[var(--foreground)]">{activity.actor.login}</span>
+                        <span className="text-[var(--muted)]">in</span>
                         <span className="text-blue-400">{activity.repo}</span>
                       </div>
-                      <span className="text-xs text-[#666666] flex-shrink-0">
+                      <span className="text-xs text-[var(--muted)] flex-shrink-0">
                         {formatTimeAgo(activity.timestamp)}
                       </span>
                     </div>
                     
-                    <p className="mt-2 text-white">
+                    <p className="mt-2 text-[var(--foreground)]">
                       {activity.message}
                     </p>
 
                     {/* Action buttons */}
                     <div className="mt-3 flex gap-2">
-                      <button className="text-xs text-[#A1A1AA] hover:text-white transition-colors">
+                      <button className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
                         View details
                       </button>
-                      <span className="text-[#444444]">•</span>
-                      <button className="text-xs text-[#A1A1AA] hover:text-white transition-colors">
+                      <span className="text-[var(--muted)]">•</span>
+                      <button className="text-xs text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
                         {activity.repo}
                       </button>
                     </div>
@@ -261,7 +262,7 @@ export default function ActivityFeed() {
             </div>
 
             {filteredActivities.length === 0 && (
-              <div className="text-center py-12 text-[#666666]">
+              <div className="text-center py-12 text-[var(--muted)]">
                 <p>No activities found</p>
               </div>
             )}
@@ -273,7 +274,7 @@ export default function ActivityFeed() {
           <div className="mt-6 text-center">
             <button 
               onClick={fetchActivities}
-              className="px-4 py-2 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors text-sm"
+              className="px-4 py-2 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/10 text-[var(--foreground)] rounded-lg transition-colors text-sm"
             >
               Load more activity
             </button>

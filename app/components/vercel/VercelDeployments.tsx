@@ -150,15 +150,15 @@ export default function VercelDeployments() {
             </div>
             <div>
               <h2 
-                className="text-xl font-bold text-white" 
+                className="text-xl font-bold text-[var(--foreground)]" 
                 style={{ fontFamily: 'var(--font-aldrich)' }}
               >
                 Vercel Deployments
               </h2>
-              <p className="text-[#A1A1AA] text-sm">
+              <p className="text-[var(--muted)] text-sm">
                 {vercelUser.username ? `@${vercelUser.username}'s deployments` : 'Live deployment status'}
                 {lastUpdated && (
-                  <span className="ml-2 text-xs text-[#666666]">
+                  <span className="ml-2 text-xs text-[var(--muted)]">
                     • Updated {formatTimeAgo(lastUpdated.getTime())}
                   </span>
                 )}
@@ -194,7 +194,7 @@ export default function VercelDeployments() {
             <button
               onClick={fetchDeployments}
               disabled={isLoading}
-              className="p-2 bg-[#0a0a0a] hover:bg-[#1a1a1a] text-white rounded-lg transition-colors"
+              className="p-2 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/10 text-[var(--foreground)] rounded-lg transition-colors"
               title="Refresh"
             >
               <svg 
@@ -230,7 +230,7 @@ export default function VercelDeployments() {
         {isLoading && deployments.length === 0 && (
           <div className="text-center py-12">
             <div className="w-8 h-8 border-4 border-[#0070F3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-[#666666]">Loading deployments...</p>
+            <p className="text-[var(--muted)]">Loading deployments...</p>
           </div>
         )}
 
@@ -238,12 +238,12 @@ export default function VercelDeployments() {
         {!isLoading && !error && (
           <div className="space-y-3">
             {deployments.length === 0 ? (
-              <div className="text-center py-12 bg-[#0a0a0a] border border-[#333333] rounded-lg">
-                <svg className="w-12 h-12 mx-auto mb-4 text-[#666666]" viewBox="0 0 76 76" fill="currentColor">
+              <div className="text-center py-12 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg">
+                <svg className="w-12 h-12 mx-auto mb-4 text-[var(--muted)]" viewBox="0 0 76 76" fill="currentColor">
                   <path d="M38.001 0L0 38.001l38.001 37.999 38-37.999L38.001 0zM38.002 27.587l19.045 19.043-19.045 19.046-19.045-19.046 19.045-19.043zM28.883 28.883L9.747 47.993l-6.04-6.035 19.137-19.075 6.039 6.04z" />
                 </svg>
-                <p className="text-[#666666] mb-2">No deployments found</p>
-                <p className="text-[#444444] text-sm">Connect a Vercel project to see deployments here</p>
+                <p className="text-[var(--muted)] mb-2">No deployments found</p>
+                <p className="text-[var(--muted)] text-sm">Connect a Vercel project to see deployments here</p>
               </div>
             ) : (
               deployments.map((deployment) => {
@@ -252,7 +252,7 @@ export default function VercelDeployments() {
                 return (
                   <div
                     key={deployment.uid}
-                    className="flex items-center gap-4 p-4 bg-[#0a0a0a] border border-[#333333] hover:border-[#555555] rounded-lg transition-all group"
+                    className="flex items-center gap-4 p-4 bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--card-border)]/70 rounded-lg transition-all group"
                   >
                     {/* State indicator */}
                     <div className={`w-10 h-10 rounded-lg ${stateStyle.bg} ${stateStyle.text} flex items-center justify-center flex-shrink-0`}>
@@ -262,13 +262,13 @@ export default function VercelDeployments() {
                     {/* Deployment info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-white">{deployment.name}</span>
+                        <span className="font-medium text-[var(--foreground)]">{deployment.name}</span>
                         <span className={`px-2 py-0.5 rounded text-xs ${stateStyle.bg} ${stateStyle.text}`}>
                           {stateStyle.label}
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-2 text-xs text-[#A1A1AA] mt-1 flex-wrap">
+                      <div className="flex items-center gap-2 text-xs text-[var(--muted)] mt-1 flex-wrap">
                         <span className="flex items-center gap-1">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -290,7 +290,7 @@ export default function VercelDeployments() {
 
                     {/* Timestamp */}
                     <div className="text-right flex-shrink-0">
-                      <span className="text-xs text-[#666666]">
+                      <span className="text-xs text-[var(--muted)]">
                         {formatTimeAgo(deployment.created)}
                       </span>
                       {deployment.alias && deployment.alias[0] && (

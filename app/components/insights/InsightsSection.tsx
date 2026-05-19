@@ -58,30 +58,30 @@ export default function InsightsSection() {
   return (
     <section className="py-8 md:py-16">
       <div className="mb-6 md:mb-8">
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+        <h2 className="text-2xl md:text-3xl font-bold text-[var(--foreground)] mb-2">
           Your Insights
         </h2>
-        <p className="text-[#A1A1AA] text-sm md:text-base">
+        <p className="text-[var(--muted)] text-sm md:text-base">
           Activity frequency and latest commits across all your repositories
         </p>
       </div>
 
       {/* Activity Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg">
-          <p className="text-[#A1A1AA] text-xs md:text-sm">Last 24 hours</p>
+        <div className="p-4 md:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg">
+          <p className="text-[var(--muted)] text-xs md:text-sm">Last 24 hours</p>
           <p className="text-2xl md:text-3xl font-bold text-green-400 mt-1 md:mt-2">
             {last24h}
           </p>
         </div>
-        <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg">
-          <p className="text-[#A1A1AA] text-xs md:text-sm">Last 7 days</p>
+        <div className="p-4 md:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg">
+          <p className="text-[var(--muted)] text-xs md:text-sm">Last 7 days</p>
           <p className="text-2xl md:text-3xl font-bold text-blue-400 mt-1 md:mt-2">
             {last7d}
           </p>
         </div>
-        <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg">
-          <p className="text-[#A1A1AA] text-xs md:text-sm">Last 30 days</p>
+        <div className="p-4 md:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg">
+          <p className="text-[var(--muted)] text-xs md:text-sm">Last 30 days</p>
           <p className="text-2xl md:text-3xl font-bold text-purple-400 mt-1 md:mt-2">
             {last30d}
           </p>
@@ -89,22 +89,22 @@ export default function InsightsSection() {
       </div>
 
       {/* Activity Frequency Chart */}
-      <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg mb-6 md:mb-8">
+      <div className="p-4 md:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg mb-6 md:mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-white">
+            <h3 className="text-base md:text-lg font-semibold text-[var(--foreground)]">
               Activity Frequency
             </h3>
-            <p className="text-xs text-[#A1A1AA] mt-1">Commits by day of week</p>
+            <p className="text-xs text-[var(--muted)] mt-1">Commits by day of week</p>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#0070F3]"></div>
-              <span className="text-[#A1A1AA]">Commits</span>
+              <span className="text-[var(--muted)]">Commits</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#0070F3]/30"></div>
-              <span className="text-[#A1A1AA]">Average</span>
+              <span className="text-[var(--muted)]">Average</span>
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function InsightsSection() {
                 <div key={day} className="flex flex-col items-center flex-1 group">
                   {/* Count tooltip */}
                   <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8">
-                    <span className="px-2 py-1 bg-[#1a1a1a] text-white text-xs rounded-md border border-[#333333] whitespace-nowrap">
+                    <span className="px-2 py-1 bg-[var(--card-bg)] text-[var(--foreground)] text-xs rounded-md border border-[var(--card-border)] whitespace-nowrap">
                       {count} commit{count !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -171,17 +171,17 @@ export default function InsightsSection() {
         </div>
         
         {/* Summary stats */}
-        <div className="mt-6 pt-4 border-t border-[#1a1a1a] flex flex-wrap justify-between items-center gap-4">
-          <div className="text-xs text-[#666666]">
-            Total: <span className="text-white font-medium">{commits.length}</span> commits
+        <div className="mt-6 pt-4 border-t border-[var(--card-border)] flex flex-wrap justify-between items-center gap-4">
+          <div className="text-xs text-[var(--muted)]">
+            Total: <span className="text-[var(--foreground)] font-medium">{commits.length}</span> commits
           </div>
-          <div className="text-xs text-[#666666]">
+          <div className="text-xs text-[var(--muted)]">
             Busiest: <span className="text-[#0070F3] font-medium">
               {activityByDay.reduce((max, a) => a.count > max.count ? a : max, activityByDay[0])?.day || 'N/A'}
             </span>
           </div>
-          <div className="text-xs text-[#666666]">
-            Avg/day: <span className="text-white font-medium">
+          <div className="text-xs text-[var(--muted)]">
+            Avg/day: <span className="text-[var(--foreground)] font-medium">
               {(activityByDay.reduce((sum, a) => sum + a.count, 0) / activityByDay.filter(a => a.count > 0).length || 0).toFixed(1)}
             </span>
           </div>
@@ -189,8 +189,8 @@ export default function InsightsSection() {
       </div>
 
       {/* Latest Commits */}
-      <div className="p-4 md:p-6 bg-[#0a0a0a] border border-[#333333] rounded-lg">
-        <h3 className="text-base md:text-lg font-semibold text-white mb-3 md:mb-4">
+      <div className="p-4 md:p-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg">
+        <h3 className="text-base md:text-lg font-semibold text-[var(--foreground)] mb-3 md:mb-4">
           Latest Commits
         </h3>
         
@@ -207,7 +207,7 @@ export default function InsightsSection() {
             ))}
           </div>
         ) : commits.length === 0 ? (
-          <p className="text-[#A1A1AA] text-center py-8">No commits found</p>
+          <p className="text-[var(--muted)] text-center py-8">No commits found</p>
         ) : (
           <div className="space-y-2 md:space-y-3 max-h-64 md:max-h-96 overflow-y-auto">
             {commits.slice(0, 10).map((commit) => (
@@ -216,7 +216,7 @@ export default function InsightsSection() {
                 href={commit.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 md:gap-4 p-2 md:p-3 bg-[#1a1a1a] hover:bg-[#252525] rounded-lg transition-all group"
+                className="flex items-center gap-2 md:gap-4 p-2 md:p-3 bg-[var(--card-bg)] hover:bg-[var(--card-border)]/10 rounded-lg transition-all group"
               >
                 {commit.avatar_url ? (
                   <img 
@@ -230,10 +230,10 @@ export default function InsightsSection() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-xs md:text-sm font-medium truncate group-hover:text-[#0070F3] transition-colors">
+                  <p className="text-[var(--foreground)] text-xs md:text-sm font-medium truncate group-hover:text-[#0070F3] transition-colors">
                     {truncateMessage(commit.message)}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1 md:gap-2 text-[10px] md:text-xs text-[#A1A1AA]">
+                  <div className="flex flex-wrap items-center gap-1 md:gap-2 text-[10px] md:text-xs text-[var(--muted)]">
                     <span className="font-mono text-[#0070F3]">{commit.repo_owner}/{commit.repo_name}</span>
                     <span className="hidden sm:inline">•</span>
                     <span>{formatDate(commit.date)}</span>

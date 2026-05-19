@@ -73,24 +73,24 @@ body > * {
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
-  color: #ffffff;
+  color: var(--foreground);
   letter-spacing: -0.02em;
 }
 
 /* Body text */
 p, span, div, li, td, th {
-  color: var(--muted);
+  color: var(--foreground);
   line-height: 1.6;
 }
 
 /* Links */
 a {
-  color: var(--muted);
+  color: var(--accent);
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #ffffff;
+  color: var(--accent-hover);
 }
 
 /* Bento box containers */
@@ -154,10 +154,10 @@ a:hover {
 
 /* Input fields */
 input, textarea, select {
-  background: #0a0a0a;
+  background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 6px;
-  color: #ffffff;
+  color: var(--foreground);
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   transition: border-color 0.2s ease;
@@ -169,7 +169,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 input::placeholder, textarea::placeholder {
-  color: #52525b;
+  color: var(--muted);
 }
 
 /* Cards */
@@ -178,6 +178,22 @@ input::placeholder, textarea::placeholder {
   border: 1px solid var(--card-border);
   border-radius: 8px;
   overflow: hidden;
+}
+
+.bg-theme-card {
+  background: var(--card-bg) !important;
+}
+
+.border-theme-card {
+  border-color: var(--card-border) !important;
+}
+
+.text-theme-foreground {
+  color: var(--foreground) !important;
+}
+
+.text-theme-muted {
+  color: var(--muted) !important;
 }
 
 /* Gradient text */
