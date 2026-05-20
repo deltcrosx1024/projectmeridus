@@ -44,7 +44,7 @@ export default function IssuesSection() {
               href={issue.url}  
               target="_blank"
               rel="noopener noreferrer"
-              className="p-4 bg-[var(--card-bg)] rounded-lg hover:bg-[var(--card-border)]/10 transition-all group"
+              className="p-4 transition-all group"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
