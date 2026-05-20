@@ -97,9 +97,9 @@ function getGateway(): BraintreeGateway {
     );
   }
 
-  // bt.BraintreeGateway was confirmed to exist at runtime (node_modules inspection).
-  // Typed as any via the interface declaration above.
-  _gateway = new (bt as any).BraintreeGateway({
+  // The Braintree SDK exports BraintreeGateway as a class — use `new`, not `.create()`
+  const BraintreeGatewayCtor = (bt as any).BraintreeGateway ?? bt;
+  _gateway = new BraintreeGatewayCtor({
     environment:  isProd ? 'production' : 'sandbox',
     merchantId,
     publicKey,
