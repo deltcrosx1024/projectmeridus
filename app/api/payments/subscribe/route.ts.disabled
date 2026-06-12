@@ -1,0 +1,95 @@
+import { NextResponse } from 'next/server';
+import braintree from 'braintree';
+import { setEntitlement } from '@/app/lib/payments/entitlements';
+
+/**
+ * Creates a Braintree subscription for the given payment method nonce and plan.
+ * Expected request body: { paymentMethodNonce: string, planId: string, userId: string }
+ *   - userId: could be Discord user ID or any identifier to link the subscription to a user.
+ */
+export async function POST(request: Request) {
+  try {
+    const { paymentMethodNonce, planId, userId } = await request.json();
+
+    if (!paymentMethodNonce || !planId || !userId) {
+      return NextResponse.json(
+        { error: 'paymentMethodNonce, planId, and userId are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate environment variables
+    const merchantId = process.env.BRAINTREE_MERCHANT_ID;
+    const publicKey = process.env.BRAINTREE_PUBLIC_KEY;
+    const privateKey = process.env.BRAINTREE_PRIVATE_KEY;
+    const environment = process.env.BRAINTREE_ENVIRONMENT || 'sandbox';
+
+    if (!merchantId || !publicKey || !privateKey) {
+      return NextResponse.json(
+        { error: 'Braintree credentials are not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Create gateway instance
+    const gateway = braintree.connect({
+      environment,
+      merchantId,
+      publicKey,
+      privateKey,
+    });
+
+    // First, create a customer with the payment method nonce
+    const customerResult = await gateway.customer.create({
+      paymentMethodNonce,
+      // We can also include the userId as a custom field or in metadata
+      // Braintree customer doesn't have a direct userId field, but we can use external ID or metadata.
+      // We'll use the externalId to store our userId.
+      externalId: userId,
+    });
+
+    if (!customerResult.success) {
+      console.error('Braintree customer creation failed:', customerResult.errors);
+      return NextResponse.json(
+        { error: 'Failed to create customer' },
+        { status: 400 }
+      );
+    }
+
+    const customerId = customerResult.customer.id;
+
+    // Now create a subscription for the customer with the given plan
+    const subscriptionResult = await gateway.subscription.create({
+      paymentMethodToken: customerResult.customer.paymentMethods[0].token,
+      planId: planId,
+    });
+
+    if (!subscriptionResult.success) {
+      console.error('Braintree subscription creation failed:', subscriptionResult.errors);
+      return NextResponse.json(
+        { error: 'Failed to create subscription' },
+        { status: 400 }
+      );
+    }
+
+    const subscription = subscriptionResult.subscription;
+
+    // Optionally, we can set entitlement here, but the webhook will handle it.
+    // However, to provide immediate feedback, we can set entitlement to active.
+    // But note: the subscription might not be active yet (e.g., if it's a trial or requires first payment).
+    // We'll rely on the webhook for entitlement updates to keep consistency.
+    // For now, we'll not set entitlement here.
+
+    return NextResponse.json({
+      success: true,
+      subscriptionId: subscription.id,
+      customerId,
+    });
+  } catch (error) {
+    console.error('Error creating Braintree subscription:', error);
+    return NextResponse.json(
+      { error: 'Failed to create subscription' },
+      { status: 500 }
+    );
+  }
+}

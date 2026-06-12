@@ -999,7 +999,37 @@ function createIssueModal(repo: string): Response {
   });
 }
 
-function createPRModal(repo: string, branch: string): Response {
+async function getDefaultBranch(repo: string, githubToken: string): Promise<string> {
+  try {
+    const [owner, repoName] = repo.split('/');
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${owner}/${repoName}`,
+      {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'Meridus-Discord-Bot/1.0',
+        },
+      },
+      5000
+    );
+
+    if (!response.ok) {
+      console.warn(`[Discord] Failed to fetch repo info for ${repo}: ${response.status}`);
+      return 'main';
+    }
+
+    const repoData = await response.json();
+    return repoData.default_branch || 'main';
+  } catch (error) {
+    console.warn(`[Discord] Error fetching default branch for ${repo}:`, error);
+    return 'main';
+  }
+}
+
+async function createPRModal(repo: string, branch: string, githubToken: string): Promise<Response> {
+  const defaultBranch = await getDefaultBranch(repo, githubToken);
+  
   return createResponse({
     type: InteractionResponseType.MODAL,
     data: {
@@ -1036,8 +1066,8 @@ function createPRModal(repo: string, branch: string): Response {
             label: 'Base Branch',
             style: 1,
             required: true,
-            placeholder: 'main',
-            value: 'main',
+            placeholder: defaultBranch,
+            value: defaultBranch,
           }],
         },
       ],
@@ -1207,7 +1237,17 @@ async function handleMessageComponent(interaction: DiscordInteraction): Promise<
   if (customId.startsWith('gh:create_pr:') && !customId.includes(':execute')) {
     const data = parseCreatePRData(customId);
     if (data) {
-      return createPRModal(data.repo, data.branch);
+      const githubToken = await getGitHubTokenFromInteraction(interaction);
+      if (!githubToken) {
+        return createResponse({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `❌ No GitHub account linked. Please use \`/link\` to connect your GitHub account first.`,
+            flags: 64,
+          },
+        });
+      }
+      return await createPRModal(data.repo, data.branch, githubToken);
     }
   }
 

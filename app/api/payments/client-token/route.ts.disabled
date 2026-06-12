@@ -1,0 +1,42 @@
+import { NextResponse } from 'next/server';
+import braintree from 'braintree';
+
+/**
+ * Generates a Braintree client token for initializing the Drop-in UI.
+ * This endpoint should be called by the frontend to get a client token.
+ */
+export async function POST() {
+  try {
+    // Validate environment variables
+    const merchantId = process.env.BRAINTREE_MERCHANT_ID;
+    const publicKey = process.env.BRAINTREE_PUBLIC_KEY;
+    const privateKey = process.env.BRAINTREE_PRIVATE_KEY;
+    const environment = process.env.BRAINTREE_ENVIRONMENT || 'sandbox';
+
+    if (!merchantId || !publicKey || !privateKey) {
+      return NextResponse.json(
+        { error: 'Braintree credentials are not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Create gateway instance
+    const gateway = braintree.connect({
+      environment,
+      merchantId,
+      publicKey,
+      privateKey,
+    });
+
+    // Generate client token
+    const clientTokenResponse = await gateway.clientToken.generate({});
+    
+    return NextResponse.json({ clientToken: clientTokenResponse.clientToken });
+  } catch (error) {
+    console.error('Error generating Braintree client token:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate client token' },
+      { status: 500 }
+    );
+  }
+}

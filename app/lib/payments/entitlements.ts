@@ -1,6 +1,6 @@
 // lib/payments/entitlements.ts
 // Premium entitlement records stored in Upstash Redis
-// Manages subscription state per Discord user (linked via Braintree payment metadata)
+// Manages subscription state per Discord user (linked via payment metadata)
 
 import { redis } from '../redis';
 
@@ -12,7 +12,7 @@ export interface PremiumEntitlement {
   planTier: PlanTier;
   planName: string;
   expiresAt: string | null;       // ISO date string, null = lifetime
-  provider: 'braintree' | 'stripe' | 'opn';
+  provider: 'stripe' | 'opn';
   providerSubscriptionId: string | null;
   providerCustomerId: string | null;
   transactionId: string | null;
@@ -42,7 +42,7 @@ const DEFAULT_ENTITLEMENT: PremiumEntitlement = {
   planTier: 'basic',
   planName: '',
   expiresAt: null,
-  provider: 'braintree',
+  provider: 'stripe',
   providerSubscriptionId: null,
   providerCustomerId: null,
   transactionId: null,

@@ -196,6 +196,15 @@ input::placeholder, textarea::placeholder {
   color: var(--muted) !important;
 }
 
+/* Alias for card background and border */
+.bg-card {
+  background: var(--card-bg) !important;
+}
+
+.border-card-border {
+  border-color: var(--card-border) !important;
+}
+
 /* Gradient text */
 .text-gradient {
   background: linear-gradient(135deg, #ffffff 0%, #A1A1AA 100%);

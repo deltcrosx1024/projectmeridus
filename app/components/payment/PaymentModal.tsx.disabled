@@ -1,0 +1,228 @@
+'use client';
+
+import { useEffect, useState, useRef, useCallback } from 'react';
+import dropin from 'braintree-web/dropin';
+
+interface PaymentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  planId: string; // The Braintree plan ID to subscribe to
+  userId: string; // The user identifier (e.g., Discord user ID)
+  onSuccess?: (subscriptionId: string) => void;
+}
+
+const PaymentModal: React.FC<PaymentModalProps> = ({
+  isOpen,
+  onClose,
+  planId,
+  userId,
+  onSuccess,
+}) => {
+  const [clientToken, setClientToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
+  const dropinInstanceRef = useRef<any>(null);
+  const containerRef = useRef<div>(null);
+
+  // Fetch client token when the modal opens or planId changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    fetch('/api/payments/client-token', {
+      method: 'POST',
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch client token');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setClientToken(data.clientToken);
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [isOpen]);
+
+  // Initialize Drop-in when we have a client token
+  useEffect(() => {
+    if (!clientToken || !containerRef.current) return;
+
+    dropin.create(
+      {
+        authorization: clientToken,
+        container: containerRef.current,
+        // Optional: customize the Drop-in
+        // See: https://developers.braintreepayments.com/reference/request/client-side/javascript/v3#drop-in-create
+      },
+      (createErr: any, instance: any) => {
+        if (createErr) {
+          setError(createErr.message);
+          return;
+        }
+        dropinInstanceRef.current = instance;
+      }
+    );
+  }, [clientToken]);
+
+  // Clean up Drop-in instance when the modal closes or before unmount
+  useEffect(() => {
+    return () => {
+      if (dropinInstanceRef.current) {
+        dropinInstanceRef.current.teardown(() => {
+          // Cleanup complete
+        });
+      }
+    };
+  }, []);
+
+  // Handle payment method nonce submission
+  const handleSubmit = useCallback(async () => {
+    if (!dropinInstanceRef.current) {
+      setError('Drop-in instance not ready');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    dropinInstanceRef.current.requestPaymentMethod(
+      (err: any, payload: any) => {
+        if (err) {
+          setError(err.message);
+          setLoading(false);
+          return;
+        }
+
+        // Send the payment method nonce to our backend to create a subscription
+        fetch('/api/payments/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentMethodNonce: payload.nonce,
+            planId,
+            userId,
+          }),
+        })
+          .then((res) => {
+            if (!res.ok) {
+              return res.json().then((errorData) => {
+                throw new Error(errorData.error || 'Failed to create subscription');
+              });
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data.success && data.subscriptionId) {
+              setSuccess(true);
+              if (onSuccess) {
+                onSuccess(data.subscriptionId);
+              }
+            } else {
+              throw new Error('Unexpected response from subscription endpoint');
+            }
+          })
+          .catch((err) => {
+            setError(err.message);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
+    );
+  }, [dropinInstanceRef.current, planId, userId]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="relative w-full max-w-md p-6 bg-card border border-card-border rounded-lg shadow-lg">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-muted hover:text-foreground transition-colors"
+          aria-label="Close modal"
+        >
+          ×
+        </button>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full border-t-2 border-b-2 border-accent w-8 h-8"></div>
+            <span className="ml-3 text-foreground">Processing payment...</span>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && !loading && !success && (
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-900/30 text-red-400 rounded">
+            {error}
+          </div>
+        )}
+
+        {/* Success state */}
+        {success && (
+          <div className="text-center py-8">
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-900/20">
+                <svg className="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Payment Successful!
+            </h3>
+            <p className="text-muted mb-6">
+              Your subscription has been activated. You'll receive a confirmation shortly.
+            </p>
+            <button
+              onClick={onClose}
+              className="btn-primary w-full"
+            >
+              Close
+            </button>
+          </div>
+        )}
+
+        {/* Payment form */}
+        {!loading && !error && !success && (
+          <>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Upgrade to Premium
+            </h3>
+            <p className="text-muted mb-6">
+              Subscribe to access premium features. Payment will be processed securely via Braintree.
+            </p>
+            <div ref={containerRef} className="mb-6" />
+            <div className="flex justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={!dropinInstanceRef.current}
+                className="btn-primary px-6 py-2"
+              >
+                {dropinInstanceRef.current ? 'Pay Now' : 'Loading...'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default PaymentModal;
