@@ -20,10 +20,10 @@
     "highcharts-more": "^0.1.7",
     "highcharts-react-official": "^3.2.3",
     "highcharts-solid-gauge": "^0.1.7",
-    "next": "16.1.7",
+    "next": "16.2.9",
     "next-auth": "^4.24.14",
     "octokit": "^5.0.5",
-    "pm2": "^6.0.14",
+    "pm2": "^7.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "swr": "^2.4.1"
